@@ -6,9 +6,8 @@ function json(data, status = 200) {
 }
 
 async function authorize(request, env) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return { response: json({ error: "not_authenticated" }, 401) };
-
   let identity;
   try {
     const response = await fetch("https://accounts.theegget.com/oauth/userinfo", {
@@ -20,10 +19,8 @@ async function authorize(request, env) {
   } catch {
     return { response: json({ error: "tc_accounts_unavailable" }, 503) };
   }
-
   const id = Number(identity.sub);
   if (!Number.isSafeInteger(id) || id < 1) return { response: json({ error: "invalid_identity" }, 401) };
-
   try {
     const account = await env.TC.prepare("SELECT id, username, status, role FROM users WHERE id = ?").bind(id).first();
     if (!account || account.status !== "active") return { response: json({ error: "account_unavailable" }, 403) };
@@ -77,16 +74,13 @@ export async function onRequestPost({ request, env }) {
   if (auth.response) return auth.response;
   let body;
   try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400); }
-
   const clientId = typeof body?.client_id === "string" ? body.client_id.trim() : "";
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const redirects = Array.isArray(body?.redirect_uris) ? [...new Set(body.redirect_uris.map(value => typeof value === "string" ? value.trim() : value))] : [];
   const scopes = Array.isArray(body?.scopes) ? [...new Set(body.scopes)] : [];
-
   if (!clientId || name.length < 2 || name.length > 80) return json({ error: "invalid_client_data", message: "Provide a client ID and an application name between 2 and 80 characters." }, 400);
   if (!validRedirects(redirects)) return json({ error: "invalid_redirect_uris", message: "Provide 1–10 valid HTTPS redirect URLs (localhost is allowed for development)." }, 400);
   if (!scopes.length || scopes.some(scope => !["profile", "email"].includes(scope))) return json({ error: "invalid_scopes", message: "Only profile and email scopes are supported." }, 400);
-
   try {
     const existing = await env.TC.prepare("SELECT client_id FROM oauth_clients WHERE client_id = ?").bind(clientId).first();
     if (!existing) return json({ error: "client_not_found", message: "That client ID is not registered in TC Accounts." }, 404);
