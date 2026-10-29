@@ -6,9 +6,18 @@
     <meta name="theme-color" content="#101114" />
     <meta name="description" content="Theegget Creations administration and support dashboard." />
     <title>TC Admin — Theegget Creations</title>
+    <style>
+      html,body{margin:0;min-height:100%;background:#0a0a0b;color:#f5f5f6;font-family:system-ui,sans-serif}
+      #startup{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+      #startup>div{width:min(100%,420px);text-align:center}
+      #startup strong{font-size:18px}
+      #startup p{color:#9999a1;font-size:13px;line-height:1.6}
+      #startup span{display:inline-block;width:20px;height:20px;border:2px solid #37373c;border-top-color:#eee;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="startup"><div><span></span><br /><strong>Loading TC Admin</strong><p>If this screen does not change, the app failed to start. Refresh the page and check the deployment.</p></div></div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
