@@ -19,11 +19,10 @@ export async function onRequestGet({ request, env }) {
   try {
     const account = await env.TC.prepare("SELECT id, username, status FROM users WHERE id = ? AND status = 'active'").bind(id).first();
     if (!account) return Response.json({ error: "account_unavailable" }, { status: 403, headers: { "Cache-Control": "no-store" } });
-    let role = "none";
-    if (id === 1) role = "owner";
-    else {
+    let role = id === 1 ? "owner" : "user";
+    if (id !== 1) {
       const row = await env.TC.prepare("SELECT role FROM tcadmin_roles WHERE user_id = ?").bind(id).first();
-      if (row && ["admin", "support", "viewer"].includes(row.role)) role = row.role;
+      if (row && ["user", "support", "admin", "co_owner", "banned"].includes(row.role)) role = row.role;
     }
     return Response.json({ user: { id: account.id, username: account.username, role } }, { headers: { "Cache-Control": "no-store" } });
   } catch {
