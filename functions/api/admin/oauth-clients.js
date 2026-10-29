@@ -1,5 +1,5 @@
 const ROLE_LEVEL = { banned: 0, user: 1, support: 2, admin: 3, co_owner: 4, owner: 5 };
-const TCADMIN_CLIENT_ID = "Thetc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
+const TCADMIN_CLIENT_ID = "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
 
 function json(data, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
