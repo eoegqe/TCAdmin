@@ -5,10 +5,12 @@ const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "";
 const REDIRECT_URI = "https://admin.theegget.com/oauth/callback";
 const ROLES = [
-  { value: "admin", label: "Administrator" },
-  { value: "support", label: "Support staff" },
-  { value: "viewer", label: "Read-only" },
-  { value: "none", label: "No role" }
+  { value: "user", label: "1 · User" },
+  { value: "support", label: "2 · Support" },
+  { value: "admin", label: "3 · Admin" },
+  { value: "co_owner", label: "4 · Co-owner" },
+  { value: "owner", label: "5 · Owner" },
+  { value: "banned", label: "0 · Banned" }
 ];
 
 function base64url(bytes) {
@@ -189,13 +191,14 @@ export default function App() {
       <button className="tcadmin-primary" disabled={!CLIENT_ID} onClick={() => startLogin().catch(e => setError(e.message))}>Continue with TC <span>→</span></button>
       <p className="tcadmin-footnote">A TC account alone does not grant administrative access.</p>
     </main> :
-    user.role === "none" ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><ShieldCheck size={24} /></div><h1>Access not granted</h1><p className="tcadmin-subtitle">Signed in as <strong>{user.username}</strong> (TC account #{user.id}), but no TCAdmin role has been assigned. Ask the account owner to grant access.</p><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></main> :
+    user.role === "banned" ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><LockKeyhole size={24} /></div><h1>TCAdmin access suspended</h1><p className="tcadmin-subtitle">This TC account has been blocked from TCAdmin. Contact the owner if you believe this is a mistake.</p><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></main> :
+    user.role === "user" ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><ShieldCheck size={24} /></div><h1>Access not granted</h1><p className="tcadmin-subtitle">Signed in as <strong>{user.username}</strong> (TC account #{user.id}). Your TC account has the default User role, which does not grant access to the admin workspace.</p><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></main> :
     <main className="tcadmin-dashboard">
-      <div className="tcadmin-page-heading"><div><p className="tcadmin-kicker">THEEGGET CREATIONS / ADMIN</p><h1>Access management</h1><p>Assign TCAdmin roles to TC Accounts identities.</p></div><span className="tcadmin-role-chip">{user.role === "owner" ? "Owner" : user.role === "admin" ? "Administrator" : user.role === "support" ? "Support staff" : "Read-only"}</span></div>
+      <div className="tcadmin-page-heading"><div><p className="tcadmin-kicker">THEEGGET CREATIONS / ADMIN</p><h1>Access management</h1><p>Assign TCAdmin roles to TC Accounts identities.</p></div><span className="tcadmin-role-chip">{ROLES.find(r => r.value === user.role)?.label || user.role}</span></div>
       {error && <div className="tcadmin-error"><AlertCircle size={17} />{error}</div>}
       {notice && <div className="tcadmin-notice">{notice}</div>}
       {user.role === "owner" ? <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Users size={19} /><div><h2>TC accounts</h2><p>Only TC account ID 1 can change roles.</p></div></div><button className="tcadmin-refresh" onClick={loadAccounts} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
-        {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Current role</th><th>Assign role</th><th /></tr></thead><tbody>{accounts.map(account => <tr key={account.id}><td><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? ` · ${account.status}` : ""}</span></td><td><span className="tcadmin-role-chip">{account.id === 1 ? "Owner" : ROLES.find(r => r.value === account.role)?.label || "No role"}</span></td><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={() => saveRole(account)}>Save</button>}</td></tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
+        {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Current role</th><th>Assign role</th><th /></tr></thead><tbody>{accounts.map(account => <tr key={account.id}><td><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? ` · ${account.status}` : ""}</span></td><td><span className="tcadmin-role-chip">{account.id === 1 ? "5 · Owner" : ROLES.find(r => r.value === account.role)?.label || "1 · User"}</span></td><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={() => saveRole(account)}>Save</button>}</td></tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
       </section> : <section className="tcadmin-panel tcadmin-no-role-tools"><UserCog size={24} /><h2>Administrative tools</h2><p>Your role allows access to the TCAdmin workspace, but only TC account ID 1 can assign or change roles.</p></section>}
       <p className="tcadmin-security-note"><ShieldCheck size={15} /> Role changes are enforced by the server, not just by the interface.</p>
     </main>}
