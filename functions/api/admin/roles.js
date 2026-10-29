@@ -42,18 +42,18 @@ export async function onRequestPost({ request, env }) {
   const userId = Number(body?.user_id);
   const role = body?.role;
   if (!Number.isSafeInteger(userId) || userId <= 1) return Response.json({ error: "invalid_user", message: "The owner account cannot be modified." }, { status: 400 });
-  if (!["admin", "support", "viewer", "none"].includes(role)) return Response.json({ error: "invalid_role" }, { status: 400 });
+  if (!["user", "support", "admin", "co_owner", "banned"].includes(role)) return Response.json({ error: "invalid_role" }, { status: 400 });
 
   try {
     const target = await env.TC.prepare("SELECT id FROM users WHERE id = ?").bind(userId).first();
     if (!target) return Response.json({ error: "account_not_found" }, { status: 404 });
     const now = new Date().toISOString();
-    if (role === "none") {
+    if (role === "user") {
       await env.TC.prepare("DELETE FROM tcadmin_roles WHERE user_id = ?").bind(userId).run();
     } else {
       await env.TC.prepare("INSERT INTO tcadmin_roles(user_id, role, updated_by, updated_at) VALUES(?, ?, 1, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, updated_by = 1, updated_at = excluded.updated_at").bind(userId, role, now).run();
     }
-    await env.TC.prepare("INSERT INTO tcadmin_audit(actor_id, target_user_id, action, role, created_at) VALUES(1, ?, ?, ?, ?)").bind(userId, role === "none" ? "role_removed" : "role_set", role, now).run();
+    await env.TC.prepare("INSERT INTO tcadmin_audit(actor_id, target_user_id, action, role, created_at) VALUES(1, ?, ?, ?, ?)").bind(userId, role === "user" ? "role_removed" : "role_set", role, now).run();
     return Response.json({ success: true, user_id: userId, role }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "database_unavailable", message: "Apply migrations/0001_tcadmin_roles.sql before changing roles." }, { status: 503 });
