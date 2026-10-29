@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
-const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "Thetc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
+const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
 const REDIRECT_URI = "https://admin.theegget.com/oauth/callback";
 const ROLES = [
   { value: "user", label: "1 · User" },
