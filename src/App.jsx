@@ -82,7 +82,7 @@ export default function App() {
             redirect_uri: REDIRECT_URI,
             code_verifier: verifier
           });
-          const response = await fetch(`${ACCOUNTS}/oauth/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+          const response = await fetch("/api/auth/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.access_token) throw new Error(result.error_description || result.error || "Could not finish TC sign-in.");
           sessionStorage.setItem("tcadmin_access_token", result.access_token);
