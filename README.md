@@ -18,15 +18,23 @@ npm run build
 npm run preview
 ```
 
+## Cloudflare D1 connection
+
+The repository includes a Wrangler Pages configuration that binds the existing Cloudflare D1 database named `tc` to the `TC` binding. The binding uses database ID `fd0e9d90-b443-4002-8378-f0d817fb415b`.
+
+The Pages Function at `/api/health` performs a harmless `SELECT 1` query to confirm that the binding works. Once deployed to Cloudflare Pages, check `https://admin.theegget.com/api/health` to verify the connection.
+
+The health endpoint only confirms database connectivity. It does not expose account records.
+
 ## Current status
 
-This repository contains a **frontend prototype using sample data**. It is not ready to use for real account administration. No real accounts are queried or changed by this interface.
+The D1 binding and health endpoint are configured, but the dashboard is still a **frontend prototype using sample data**. Account records and support actions are not yet wired to the database.
 
 Before production use, implement and test:
 
 - TC Accounts authentication and secure staff-session handling.
 - Server-side role and permission checks for owner, administrator, and support staff.
-- A backend API for account lookup, support requests, sub-account records, and service policy enforcement.
+- Authenticated backend APIs for account lookup, support requests, sub-account records, and service policy enforcement.
 - Verified external-account ownership before support creates links or changes identity information.
 - Audit logging for all sensitive actions, including actor, target, reason, time, outcome, and override request.
 - A secure Eggser integration that enforces service-specific administrator eligibility rules.
@@ -50,4 +58,4 @@ Before production use, implement and test:
 
 ## Important
 
-The visual prototype is not a security boundary. Do not deploy it as a live administration tool until server-side authentication, authorization, data storage, audit logging, and service integrations are implemented and reviewed.
+The D1 binding does not make the dashboard safe for live administration by itself. Do not deploy it as a live administration tool until server-side authentication, authorization, data APIs, audit logging, and service integrations are implemented and reviewed.
