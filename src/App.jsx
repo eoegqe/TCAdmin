@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -72,6 +72,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [roleChanges, setRoleChanges] = useState({});
+  const [selectedAccount, setSelectedAccount] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -326,8 +327,41 @@ export default function App() {
       </section>}
 
       {user.role === "owner" ? <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Users size={19} /><div><h2>TC accounts</h2><p>Only TC account ID 1 can change roles.</p></div></div><button className="tcadmin-refresh" onClick={loadAccounts} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
-        {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Current role</th><th>Assign role</th><th /></tr></thead><tbody>{accounts.map(account => <tr key={account.id}><td><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? ` · ${account.status}` : ""}</span></td><td><span className="tcadmin-role-chip">{account.id === 1 ? "5 · Owner" : ROLES.find(r => r.value === account.role)?.label || "1 · User"}</span></td><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={() => saveRole(account)}>Save</button>}</td></tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
+        {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Current role</th><th>Assign role</th><th /></tr></thead><tbody>{accounts.map(account => <tr key={account.id} onClick={() => setSelectedAccount(account)} style={{ cursor: "pointer" }} title={`Open management panel for ${account.username}`}><td><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? ` · ${account.status}` : ""}</span></td><td><span className="tcadmin-role-chip">{account.id === 1 ? "5 · Owner" : ROLES.find(r => r.value === account.role)?.label || "1 · User"}</span></td><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select onClick={e => e.stopPropagation()} value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={e => { e.stopPropagation(); saveRole(account); }}>Save</button>}</td></tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
       </section> : !CAN_MANAGE_CLIENTS(user.role) ? <section className="tcadmin-panel tcadmin-no-role-tools"><UserCog size={24} /><h2>Administrative tools</h2><p>Your role allows access to the TCAdmin workspace, but only TC account ID 1 can assign or change roles.</p></section> : null}
+      {selectedAccount && user.role === "owner" && <div onClick={() => setSelectedAccount(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", justifyContent: "flex-end" }}>
+        <section onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Management panel for ${selectedAccount.username}`} style={{ width: "min(620px, 100%)", height: "100%", overflowY: "auto", background: "#111113", borderLeft: "1px solid #303035", padding: "24px", boxSizing: "border-box", boxShadow: "-20px 0 60px rgba(0,0,0,.35)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 28 }}>
+            <div><p className="tcadmin-kicker">ACCOUNT MANAGEMENT</p><h2 style={{ margin: "8px 0 5px", fontSize: 25 }}>{selectedAccount.username}</h2><p style={{ color: "#85858d", margin: 0, fontSize: 12 }}>TC account #{selectedAccount.id}</p></div>
+            <button className="tcadmin-refresh" onClick={() => setSelectedAccount(null)} aria-label="Close management panel"><X size={17} /> Close</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginBottom: 24 }}>
+            <div style={{ background: "#19191c", border: "1px solid #303035", borderRadius: 9, padding: 15 }}><div style={{ color: "#85858d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Account ID</div><strong style={{ display: "block", marginTop: 8, fontSize: 18 }}>#{selectedAccount.id}</strong></div>
+            <div style={{ background: "#19191c", border: "1px solid #303035", borderRadius: 9, padding: 15 }}><div style={{ color: "#85858d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Account status</div><strong style={{ display: "block", marginTop: 8, fontSize: 18, textTransform: "capitalize" }}>{selectedAccount.status || "Unknown"}</strong></div>
+          </div>
+          <section style={{ border: "1px solid #303035", borderRadius: 10, padding: 18, marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 5px", fontSize: 15 }}>Access and permissions</h3>
+            <p style={{ color: "#85858d", fontSize: 12, margin: "0 0 16px" }}>Change the role assigned to this TC account.</p>
+            {selectedAccount.id === 1 ? <div className="tcadmin-role-chip">5 · Owner · Permanent owner account</div> : <>
+              <label style={{ display: "block", color: "#a1a1aa", fontSize: 11 }}>Assigned role
+                <select value={roleChanges[selectedAccount.id] ?? selectedAccount.role} onChange={e => setRoleChanges(v => ({ ...v, [selectedAccount.id]: e.target.value }))} style={{ display: "block", width: "100%", marginTop: 8, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 12 }}>
+                  {ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
+                </select>
+              </label>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}><button className="tcadmin-save" disabled={busy || (roleChanges[selectedAccount.id] ?? selectedAccount.role) === selectedAccount.role} onClick={() => saveRole(selectedAccount)}><Save size={13} style={{ verticalAlign: "middle", marginRight: 5 }} />Save role</button></div>
+            </>}
+          </section>
+          <section style={{ border: "1px solid #303035", borderRadius: 10, padding: 18 }}>
+            <h3 style={{ margin: "0 0 7px", fontSize: 15 }}>Account information</h3>
+            <div style={{ display: "grid", gap: 12, fontSize: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span style={{ color: "#85858d" }}>Username</span><strong>{selectedAccount.username}</strong></div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span style={{ color: "#85858d" }}>Current role</span><strong>{ROLES.find(r => r.value === selectedAccount.role)?.label || selectedAccount.role}</strong></div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span style={{ color: "#85858d" }}>Account status</span><strong>{selectedAccount.status || "Not provided"}</strong></div>
+            </div>
+          </section>
+          <p style={{ color: "#777780", fontSize: 11, lineHeight: 1.6, marginTop: 18 }}>Role changes are verified by TC Accounts on the server and recorded in the TCAdmin role audit log. Additional account fields and actions are not currently exposed by the TC Accounts management API.</p>
+        </section>
+      </div>}
       <p className="tcadmin-security-note"><ShieldCheck size={15} /> OAuth client changes are checked against your TC role on the server.</p>
     </main>}
   </div>;
