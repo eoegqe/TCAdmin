@@ -393,7 +393,7 @@ export default function App() {
   async function loginSupportMailbox(event) {
     event.preventDefault();
     const email = supportEmail.trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !email.endsWith("@theegget.com")) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !email.endsWith("@theegget.com")) {
       setError("Use a valid @theegget.com email address. No mailbox login attempt was made.");
       return;
     }
