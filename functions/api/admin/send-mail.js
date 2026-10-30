@@ -10,7 +10,7 @@ function json(data, status = 200) {
 }
 
 async function authorize(request, env) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return { response: json({ error: "not_authenticated" }, 401) };
   let identity;
   try {
@@ -45,11 +45,11 @@ function base64Text(value) {
   const bytes = encoder.encode(value);
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/.{1,76}/g, "$&\\r\\n").trim();
+  return btoa(binary).replace(/.{1,76}/g, "$&\r\n").trim();
 }
 
 function smtpAddress(value) {
-  return value.replace(/[\\r\\n<>]/g, "");
+  return value.replace(/[\r\n<>]/g, "");
 }
 
 async function sendMailWithIonos(env, { to, subject, message }) {
@@ -69,25 +69,25 @@ async function sendMailWithIonos(env, { to, subject, message }) {
 
   const readReply = async () => {
     while (true) {
-      const end = lines.findIndex(line => /^\\d{3} /.test(line));
+      const end = lines.findIndex(line => /^\d{3} /.test(line));
       if (end >= 0) {
-        const reply = lines.splice(0, end + 1).join("\\n");
+        const reply = lines.splice(0, end + 1).join("\n");
         return reply;
       }
       const part = await reader.read();
       if (part.done) throw new Error("SMTP connection closed unexpectedly");
       pending += decoder.decode(part.value, { stream: true });
-      const split = pending.split("\\r\\n");
+      const split = pending.split("\r\n");
       pending = split.pop();
       lines.push(...split);
     }
   };
 
   const command = async (line, expected) => {
-    await writer.write(encoder.encode(line + "\\r\\n"));
+    await writer.write(encoder.encode(line + "\r\n"));
     const reply = await readReply();
     if (!expected.includes(Number(reply.slice(0, 3)))) {
-      throw new Error(`SMTP command failed (${reply.slice(0, 3)}): ${reply.split("\\n").at(-1)?.slice(4) || "unknown response"}`);
+      throw new Error(`SMTP command failed (${reply.slice(0, 3)}): ${reply.split("\n").at(-1)?.slice(4) || "unknown response"}`);
     }
     return reply;
   };
@@ -104,8 +104,8 @@ async function sendMailWithIonos(env, { to, subject, message }) {
     await command("DATA", [354]);
 
     const boundary = `tcadmin-${crypto.randomUUID()}`;
-    const plain = message.replace(/\\r\\n|\\r/g, "\\n").replace(/\\n/g, "\\r\\n");
-    const html = escapeHtml(message).replace(/\\r\\n|\\r|\\n/g, "<br>");
+    const plain = message.replace(/\r\n|\r/g, "\n").replace(/\n/g, "\r\n");
+    const html = escapeHtml(message).replace(/\r\n|\r|\n/g, "<br>");
     const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
     const mime = [
       `From: Theegget Creations <${FROM_ADDRESS}>`,
@@ -128,9 +128,9 @@ async function sendMailWithIonos(env, { to, subject, message }) {
       base64Text(`<!doctype html><html><body style="font-family:Arial,sans-serif;line-height:1.6;color:#202124"><div>${html}</div></body></html>`),
       `--${boundary}--`,
       ""
-    ].join("\\r\\n").replace(/(^|\\r\\n)\\./g, "$1..");
+    ].join("\r\n").replace(/(^|\r\n)\./g, "$1..");
 
-    await writer.write(encoder.encode(mime + ".\\r\\n"));
+    await writer.write(encoder.encode(mime + ".\r\n"));
     const accepted = await readReply();
     if (!accepted.startsWith("250")) throw new Error("SMTP server did not accept the message");
     try { await command("QUIT", [221]); } catch {}
@@ -152,10 +152,10 @@ export async function onRequestPost({ request, env }) {
   const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
   const message = typeof body?.message === "string" ? body.message.trim() : "";
 
-  if (to.length > 254 || !/^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$/.test(to)) {
+  if (to.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to)) {
     return json({ error: "invalid_recipient", message: "Enter one valid recipient email address." }, 400);
   }
-  if (!subject || subject.length > 180 || /[\\r\\n]/.test(subject)) {
+  if (!subject || subject.length > 180 || /[\r\n]/.test(subject)) {
     return json({ error: "invalid_subject", message: "Subject must be between 1 and 180 characters." }, 400);
   }
   if (!message || message.length > 20000) {
