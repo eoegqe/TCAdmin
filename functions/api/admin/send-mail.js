@@ -28,7 +28,7 @@ async function authorize(request, env) {
   try {
     const account = await env.TC.prepare("SELECT id, username, status, role FROM users WHERE id = ?").bind(id).first();
     if (!account || account.status !== "active") return { response: json({ error: "account_unavailable" }, 403) };
-    if (Number(account.role) < ROLE_LEVEL.support) return { response: json({ error: "insufficient_role", message: "Support role or higher is required to send mail." }, 403) };
+    if (Number(account.role) < ROLE_LEVEL.admin) return { response: json({ error: "insufficient_role", message: "Admin role or higher is required to use the administrative email sender." }, 403) };
     return { account };
   } catch {
     return { response: json({ error: "database_unavailable" }, 503) };

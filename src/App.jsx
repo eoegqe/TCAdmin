@@ -13,7 +13,7 @@ const ROLES = [
   { value: "banned", label: "0 · Banned" }
 ];
 const CAN_MANAGE_CLIENTS = role => ["admin", "co_owner", "owner"].includes(role);
-const CAN_SEND_MAIL = role => ["support", "admin", "co_owner", "owner"].includes(role);
+const CAN_SEND_MAIL = role => ["admin", "co_owner", "owner"].includes(role);
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -79,6 +79,7 @@ export default function App() {
   const [mailSubject, setMailSubject] = useState("");
   const [mailMessage, setMailMessage] = useState("");
   const [mailSending, setMailSending] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
 
   useEffect(() => {
     let cancelled = false;
@@ -303,7 +304,31 @@ export default function App() {
       {error && <div className="tcadmin-error"><AlertCircle size={17} />{error}</div>}
       {notice && <div className="tcadmin-notice">{notice}</div>}
 
-      {CAN_SEND_MAIL(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
+      <nav className="tcadmin-navigation" aria-label="Administration sections">
+        {[
+          { id: "home", label: "Overview", icon: <ShieldCheck size={16} /> },
+          { id: "users", label: "Users", icon: <Users size={16} /> },
+          { id: "support", label: "Support", icon: <Mail size={16} /> },
+          ...(CAN_MANAGE_CLIENTS(user.role) ? [{ id: "apps", label: "Apps", icon: <KeyRound size={16} /> }] : [])
+        ].map(item => <button key={item.id} className={activeSection === item.id ? "tcadmin-nav-button active" : "tcadmin-nav-button"} onClick={() => setActiveSection(item.id)}>{item.icon}{item.label}</button>)}
+      </nav>
+
+      {activeSection === "home" && <section className="tcadmin-section-grid">
+        <button className="tcadmin-section-card" onClick={() => setActiveSection("users")}><Users size={21} /><strong>Users</strong><span>Manage TC accounts, roles, and permissions.</span><b>Open Users →</b></button>
+        <button className="tcadmin-section-card" onClick={() => setActiveSection("support")}><Mail size={21} /><strong>Support</strong><span>Open the employee support mailbox workspace.</span><b>Open Support →</b></button>
+        {CAN_MANAGE_CLIENTS(user.role) && <button className="tcadmin-section-card" onClick={() => setActiveSection("apps")}><KeyRound size={21} /><strong>Apps</strong><span>Manage OAuth registrations and application settings.</span><b>Open Apps →</b></button>}
+      </section>}
+
+      {activeSection === "support" && <section className="tcadmin-panel tcadmin-support-workspace">
+        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Customer support conversations and employee mailbox workspace.</p></div></div><span className="tcadmin-role-chip">Mailbox connection pending</span></div>
+        <div className="tcadmin-support-split">
+          <div className="tcadmin-support-list"><div className="tcadmin-support-search">Search support messages</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>No mailbox connected</strong><span>Incoming support conversations will appear here after the secure IONOS mailbox integration is configured.</span></div></div>
+          <div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Select a conversation</strong><span>Choose a message from the inbox to read its history and reply.</span></div></div>
+        </div>
+        <div className="tcadmin-support-note"><ShieldCheck size={15} /> Support access is designed for replying to incoming customer conversations only. Direct emails and announcements are not available to Support staff.</div>
+      </section>}
+
+      {activeSection === "apps" && CAN_SEND_MAIL(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Email center</h2><p>Send a private email to one recipient or a universal announcement to active TC accounts.</p></div></div></div>
         <form onSubmit={sendMail} style={{ padding: 20, display: "grid", gap: 14 }}>
           <div style={{ color: "#85858d", fontSize: 11 }}>From <strong style={{ color: "#e4e4e7" }}>notify@theegget.com</strong></div>
@@ -321,11 +346,11 @@ export default function App() {
             <textarea required maxLength={20000} rows={8} value={mailMessage} onChange={e => setMailMessage(e.target.value)} placeholder="Write your message…" style={{ width: "100%", boxSizing: "border-box", resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13, lineHeight: 1.6 }} />
           </label>
           <div style={{ display: "flex", justifyContent: "flex-end" }}><button className="tcadmin-save" type="submit" disabled={mailSending || busy || (mailMode === "direct" && !mailTo.trim()) || !mailSubject.trim() || !mailMessage.trim()}><Mail size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />{mailSending ? "Sending…" : mailMode === "announcement" ? "Send announcement" : "Send direct email"}</button></div>
-          <p className="tcadmin-muted" style={{ margin: 0 }}>Available to Support staff and higher. Announcements go to active TC accounts; direct emails go to one recipient. The sender address is fixed.</p>
+          <p className="tcadmin-muted" style={{ margin: 0 }}>Available to Admin staff and higher. Announcements go to active TC accounts; direct emails go to one recipient. The sender address is fixed.</p>
         </form>
       </section>}
 
-      {CAN_MANAGE_CLIENTS(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
+      {activeSection === "apps" && CAN_MANAGE_CLIENTS(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><KeyRound size={19} /><div><h2>Application OAuth registrations</h2><p>View and manage registered client IDs across TC apps. Admin role or higher is required.</p></div></div><button className="tcadmin-refresh" onClick={loadClients} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #29292d", background: "#141416" }}>
           <div style={{ color: "#777780", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>TCAdmin sign-in client ID</div>
@@ -376,10 +401,10 @@ export default function App() {
         <p className="tcadmin-muted" style={{ margin: 0 }}>Creating new registrations remains on <a href="https://dev.theegget.com" target="_blank" rel="noreferrer" style={{ color: "#d5d5dc" }}>dev.theegget.com</a>. TCAdmin manages existing registrations here.</p>
       </section>}
 
-      {user.role === "owner" ? <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Users size={19} /><div><h2>TC accounts</h2><p>Only TC account ID 1 can change roles.</p></div></div><button className="tcadmin-refresh" onClick={loadAccounts} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
+      {activeSection === "users" && (user.role === "owner" ? <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Users size={19} /><div><h2>TC accounts</h2><p>Only TC account ID 1 can change roles.</p></div></div><button className="tcadmin-refresh" onClick={loadAccounts} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
         {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Current role</th><th>Assign role</th><th /></tr></thead><tbody>{accounts.map(account => <tr key={account.id} onClick={() => setSelectedAccount(account)} style={{ cursor: "pointer" }} title={`Open management panel for ${account.username}`}><td><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? ` · ${account.status}` : ""}</span></td><td><span className="tcadmin-role-chip">{account.id === 1 ? "5 · Owner" : ROLES.find(r => r.value === account.role)?.label || "1 · User"}</span></td><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select onClick={e => e.stopPropagation()} value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={e => { e.stopPropagation(); saveRole(account); }}>Save</button>}</td></tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
-      </section> : !CAN_MANAGE_CLIENTS(user.role) ? <section className="tcadmin-panel tcadmin-no-role-tools"><UserCog size={24} /><h2>Administrative tools</h2><p>Your role allows access to the TCAdmin workspace, but only TC account ID 1 can assign or change roles.</p></section> : null}
-      {selectedAccount && user.role === "owner" && <div onClick={() => setSelectedAccount(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", justifyContent: "flex-end" }}>
+      </section> : !CAN_MANAGE_CLIENTS(user.role) ? <section className="tcadmin-panel tcadmin-no-role-tools"><UserCog size={24} /><h2>Administrative tools</h2><p>Your role allows access to the TCAdmin workspace, but only TC account ID 1 can assign or change roles.</p></section> : null)}
+      {activeSection === "users" && selectedAccount && user.role === "owner" && <div onClick={() => setSelectedAccount(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", justifyContent: "flex-end" }}>
         <section onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Management panel for ${selectedAccount.username}`} style={{ width: "min(620px, 100%)", height: "100%", overflowY: "auto", background: "#111113", borderLeft: "1px solid #303035", padding: "24px", boxSizing: "border-box", boxShadow: "-20px 0 60px rgba(0,0,0,.35)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 28 }}>
             <div><p className="tcadmin-kicker">ACCOUNT MANAGEMENT</p><h2 style={{ margin: "8px 0 5px", fontSize: 25 }}>{selectedAccount.username}</h2><p style={{ color: "#85858d", margin: 0, fontSize: 12 }}>TC account #{selectedAccount.id}</p></div>
@@ -412,7 +437,7 @@ export default function App() {
           <p style={{ color: "#777780", fontSize: 11, lineHeight: 1.6, marginTop: 18 }}>Role changes are verified by TC Accounts on the server and recorded in the TCAdmin role audit log. Additional account fields and actions are not currently exposed by the TC Accounts management API.</p>
         </section>
       </div>}
-      <p className="tcadmin-security-note"><ShieldCheck size={15} /> OAuth client changes are checked against your TC role on the server.</p>
+      {activeSection === "apps" && <p className="tcadmin-security-note"><ShieldCheck size={15} /> OAuth client changes are checked against your TC role on the server.</p>}
     </main>}
   </div>;
 }
