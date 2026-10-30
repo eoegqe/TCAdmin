@@ -157,7 +157,7 @@ export async function onRequestPost({ request, env }) {
   const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
   const message = typeof body?.message === "string" ? body.message.trim() : "";
 
-  if (!subject || subject.length > 180 || /[\\r\\n]/.test(subject)) {
+  if (!subject || subject.length > 180 || /[\r\n]/.test(subject)) {
     return json({ error: "invalid_subject", message: "Subject must be between 1 and 180 characters." }, 400);
   }
   if (!message || message.length > 20000) {
@@ -168,13 +168,13 @@ export async function onRequestPost({ request, env }) {
   if (announcement) {
     try {
       const result = await env.TC.prepare("SELECT email FROM users WHERE status = 'active' AND email IS NOT NULL AND email <> ''").all();
-      recipients = [...new Set((result.results || []).map(row => String(row.email).trim()).filter(email => /^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$/.test(email)))];
+      recipients = [...new Set((result.results || []).map(row => String(row.email).trim()).filter(email => /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)))];
     } catch {
       return json({ error: "recipient_lookup_failed", message: "TC accounts could not be loaded for this announcement." }, 503);
     }
     if (!recipients.length) return json({ error: "no_recipients", message: "There are no active TC accounts with valid email addresses." }, 400);
   } else {
-    if (to.length > 254 || !/^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$/.test(to)) {
+    if (to.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to)) {
       return json({ error: "invalid_recipient", message: "Enter one valid recipient email address." }, 400);
     }
     recipients = [to];
