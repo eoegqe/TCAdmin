@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -90,6 +90,12 @@ export default function App() {
   const [supportMailboxUser, setSupportMailboxUser] = useState("");
   const [supportLoginOpen, setSupportLoginOpen] = useState(false);
   const [supportLoginBusy, setSupportLoginBusy] = useState(false);
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [selectedSupportMessage, setSelectedSupportMessage] = useState(null);
+  const [supportReply, setSupportReply] = useState("");
+  const [supportInboxBusy, setSupportInboxBusy] = useState(false);
+  const [supportReplyBusy, setSupportReplyBusy] = useState(false);
+  const [supportSearch, setSupportSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -312,6 +318,78 @@ export default function App() {
     }
   }
 
+
+  async function supportMailboxRequest(path, email = supportMailboxUser, password = supportPassword, payload = {}) {
+    const response = await fetch(ACCOUNTS + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ email, password, ...payload })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || "Mailbox request failed.");
+    return result;
+  }
+
+  async function loadSupportInbox(email = supportMailboxUser, password = supportPassword) {
+    if (!email || !password) return;
+    setSupportInboxBusy(true);
+    try {
+      const result = await supportMailboxRequest("/api/support/mailbox/inbox", email, password);
+      setSupportMessages(result.messages || []);
+      setError("");
+    } catch (e) {
+      setError(e.message || "Could not load the support inbox.");
+    } finally {
+      setSupportInboxBusy(false);
+    }
+  }
+
+  async function openSupportMessage(uid) {
+    setSupportInboxBusy(true);
+    setSupportReply("");
+    try {
+      const result = await supportMailboxRequest("/api/support/mailbox/message", supportMailboxUser, supportPassword, { uid });
+      setSelectedSupportMessage(result);
+      setSupportMessages(current => current.map(message => message.uid === uid ? { ...message, unread: false } : message));
+      setError("");
+    } catch (e) {
+      setError(e.message || "Could not open this message.");
+    } finally {
+      setSupportInboxBusy(false);
+    }
+  }
+
+  async function sendSupportReply(event) {
+    event.preventDefault();
+    if (!selectedSupportMessage || !supportReply.trim()) return;
+    setSupportReplyBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await supportMailboxRequest("/api/support/mailbox/reply", supportMailboxUser, supportPassword, { uid: selectedSupportMessage.uid, message: supportReply.trim() });
+      setNotice(result.message || "Reply sent.");
+      setSupportReply("");
+      await loadSupportInbox();
+    } catch (e) {
+      setError(e.message || "Could not send the reply.");
+    } finally {
+      setSupportReplyBusy(false);
+    }
+  }
+
+  function downloadSupportAttachment(attachment) {
+    try {
+      const link = document.createElement("a");
+      link.href = "data:" + (attachment.content_type || "application/octet-stream") + ";base64," + attachment.content_base64;
+      link.download = attachment.filename || "attachment";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      setError("The attachment could not be downloaded.");
+    }
+  }
+
   async function loginSupportMailbox(event) {
     event.preventDefault();
     const email = supportEmail.trim().toLowerCase();
@@ -327,21 +405,27 @@ export default function App() {
     setError("");
     setNotice("");
     try {
-      const response = await fetch("https://accounts.theegget.com/api/support/mailbox/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: supportPassword })
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.message || "Mailbox sign-in failed.");
+      await supportMailboxRequest("/api/support/mailbox/login", email, supportPassword);
       setSupportMailboxUser(email);
       setSupportLoginOpen(false);
-      setNotice("Mailbox credentials verified for " + email + ".");
+      setSelectedSupportMessage(null);
+      setNotice("Mailbox connected: " + email + ".");
+      await loadSupportInbox(email, supportPassword);
     } catch (e) {
       setError(e.message || "Mailbox sign-in failed.");
     } finally {
       setSupportLoginBusy(false);
     }
+  }
+
+  function signOutSupportMailbox() {
+    setSupportMailboxUser("");
+    setSupportPassword("");
+    setSupportEmail("");
+    setSupportMessages([]);
+    setSelectedSupportMessage(null);
+    setSupportReply("");
+    setSupportSearch("");
   }
 
   async function signOut() {
@@ -353,9 +437,7 @@ export default function App() {
     setUser(null);
     setAccounts([]);
     setClients([]);
-    setSupportMailboxUser("");
-    setSupportPassword("");
-    setSupportEmail("");
+    signOutSupportMailbox();
     try {
       await fetch(`${ACCOUNTS}/oauth/revoke`, {
         method: "POST",
@@ -376,7 +458,7 @@ export default function App() {
       <button className="tcadmin-primary" onClick={() => startLogin().catch(e => setError(e.message))}>Continue with TC <span>→</span></button>
       <p className="tcadmin-footnote">A TC account alone does not grant administrative access.</p>
     </main> :
-    user.role === "banned" ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><LockKeyhole size={24} /></div><h1>TCAdmin access suspended</h1><p className="tcadmin-subtitle">This TC account has been blocked from TCAdmin. Contact the owner if you believe this is a mistake.</p><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></main> :
+    user.role === "banned" ? <main className="tcadmin-centered tcadmin-banned-screen"><div className="tcadmin-banned-card"><div className="tcadmin-banned-icon"><LockKeyhole size={25} /></div><p className="tcadmin-kicker">THEEGGET CREATIONS / ACCOUNT STATUS</p><h1>Access restricted</h1><p className="tcadmin-subtitle">This TC account has been banned from TCAdmin. Access to the administration workspace is disabled.</p><div className="tcadmin-ban-details"><div><span>Account</span><strong>{user.username}</strong></div><div><span>TC account ID</span><strong>#{user.id}</strong></div><div><span>Status</span><strong className="tcadmin-ban-status">Banned</strong></div></div><p className="tcadmin-ban-help">If you believe this action was made in error, contact TC Support and include your account ID.</p><a className="tcadmin-ban-contact" href="mailto:support@theegget.com">Contact TC Support</a><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></div></main> :
     user.role === "user" ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><ShieldCheck size={24} /></div><h1>Access not granted</h1><p className="tcadmin-subtitle">Signed in as <strong>{user.username}</strong> (TC account #{user.id}). Your TC account has the default User role, which does not grant access to the admin workspace.</p><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></main> :
     <main className="tcadmin-dashboard">
       <div className="tcadmin-page-heading"><div><p className="tcadmin-kicker">THEEGGET CREATIONS / ADMIN</p><h1>TC administration</h1><p>Manage registered applications and access to TCAdmin.</p></div><span className="tcadmin-role-chip">{ROLES.find(r => r.value === user.role)?.label || user.role}</span></div>
@@ -398,19 +480,36 @@ export default function App() {
         {CAN_MANAGE_CLIENTS(user.role) && <button className="tcadmin-section-card" onClick={() => setActiveSection("apps")}><KeyRound size={21} /><strong>Apps</strong><span>Manage OAuth registrations and application settings.</span><b>Open Apps →</b></button>}
       </section>}
 
+      
       {activeSection === "support" && <section className="tcadmin-panel tcadmin-support-workspace">
-        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Customer support conversations and employee mailbox workspace.</p></div></div>{supportMailboxUser ? <div className="tcadmin-mailbox-session"><span className="tcadmin-role-chip">Signed in: {supportMailboxUser}</span><button className="tcadmin-refresh" onClick={() => { setSupportMailboxUser(""); setSupportPassword(""); setSupportEmail(""); }}>Sign out</button></div> : <button className="tcadmin-save" onClick={() => setSupportLoginOpen(value => !value)}><LockKeyhole size={14} style={{ verticalAlign: "middle", marginRight: 5 }} />Log in</button>}</div>
+        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Read customer conversations and reply from your employee mailbox.</p></div></div>{supportMailboxUser ? <div className="tcadmin-mailbox-session"><span className="tcadmin-role-chip">{supportMailboxUser}</span><button className="tcadmin-refresh" onClick={() => loadSupportInbox()} disabled={supportInboxBusy}><RefreshCw size={14} /> Refresh</button><button className="tcadmin-refresh" onClick={signOutSupportMailbox}>Sign out</button></div> : <button className="tcadmin-save" onClick={() => setSupportLoginOpen(value => !value)}><LockKeyhole size={14} style={{ verticalAlign: "middle", marginRight: 5 }} />Log in</button>}</div>
         {supportLoginOpen && !supportMailboxUser && <form className="tcadmin-mailbox-login" onSubmit={loginSupportMailbox}>
           <div><strong>Log in to your TC mailbox</strong><p>Use your employee mailbox credentials. Only @theegget.com addresses are accepted.</p></div>
           <label>Email address<input type="email" required maxLength={254} autoComplete="username" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} placeholder="employee@theegget.com" /></label>
           <label>Password<input type="password" required maxLength={1024} autoComplete="current-password" value={supportPassword} onChange={e => setSupportPassword(e.target.value)} placeholder="Mailbox password" /></label>
-          <div className="tcadmin-mailbox-login-actions"><button className="tcadmin-save" type="submit" disabled={supportLoginBusy}>{supportLoginBusy ? "Checking…" : "Log in"}</button><button className="tcadmin-refresh" type="button" onClick={() => setSupportLoginOpen(false)}>Cancel</button></div>
+          <div className="tcadmin-mailbox-login-actions"><button className="tcadmin-save" type="submit" disabled={supportLoginBusy}>{supportLoginBusy ? "Connecting…" : "Connect mailbox"}</button><button className="tcadmin-refresh" type="button" onClick={() => setSupportLoginOpen(false)}>Cancel</button></div>
         </form>}
-        <div className="tcadmin-support-split">
-          <div className="tcadmin-support-list"><div className="tcadmin-support-search">Search support messages</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>{supportMailboxUser ? "Mailbox signed in" : "No mailbox connected"}</strong><span>{supportMailboxUser ? "Your mailbox credentials have been verified. Message retrieval and conversation actions are not connected yet." : "Log in with your employee mailbox to verify access. Inbox retrieval will be available after the mail workspace integration is completed."}</span></div></div>
-          <div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Select a conversation</strong><span>Choose a message from the inbox to read its history and reply.</span></div></div>
-        </div>
-        <div className="tcadmin-support-note"><ShieldCheck size={15} /> Support access is designed for replying to incoming customer conversations only. Direct emails and announcements are not available to Support staff.</div>
+        {supportMailboxUser ? <div className="tcadmin-support-split tcadmin-support-connected">
+          <div className="tcadmin-support-list">
+            <div className="tcadmin-support-search"><input value={supportSearch} onChange={e => setSupportSearch(e.target.value)} placeholder="Search sender or subject" aria-label="Search support messages" /></div>
+            <div className="tcadmin-support-message-list">
+              {supportInboxBusy && !supportMessages.length ? <div className="tcadmin-support-empty"><div className="tcadmin-spinner" /><span>Loading inbox…</span></div> : supportMessages.filter(message => (message.subject + " " + message.from).toLowerCase().includes(supportSearch.toLowerCase())).map(message => <button key={message.uid} className={"tcadmin-support-message" + (selectedSupportMessage?.uid === message.uid ? " active" : "")} onClick={() => openSupportMessage(message.uid)}>
+                <span className="tcadmin-support-message-top"><strong>{message.from || "Unknown sender"}</strong>{message.unread && <i />}</span><span className="tcadmin-support-message-subject">{message.subject}</span><span className="tcadmin-support-message-date">{message.date || "Date unavailable"}</span>
+              </button>)}
+              {!supportInboxBusy && !supportMessages.length && <div className="tcadmin-support-empty"><Mail size={22} /><strong>Your inbox is empty</strong><span>No messages were found in this mailbox.</span></div>}
+              {!supportInboxBusy && supportMessages.length > 0 && !supportMessages.some(message => (message.subject + " " + message.from).toLowerCase().includes(supportSearch.toLowerCase())) && <div className="tcadmin-support-empty"><strong>No matching messages</strong></div>}
+            </div>
+          </div>
+          <div className="tcadmin-support-conversation tcadmin-support-message-view">
+            {selectedSupportMessage ? <div className="tcadmin-support-message-content">
+              <div className="tcadmin-support-message-heading"><div><h3>{selectedSupportMessage.subject}</h3><span>From {selectedSupportMessage.from} · {selectedSupportMessage.date}</span></div><span className="tcadmin-role-chip">Message #{selectedSupportMessage.uid}</span></div>
+              <pre className="tcadmin-support-message-body">{selectedSupportMessage.body || "(This message has no plain-text content.)"}</pre>
+              {selectedSupportMessage.attachments?.length > 0 && <div className="tcadmin-support-attachments"><strong><Paperclip size={14} /> Attachments</strong>{selectedSupportMessage.attachments.map((attachment,index) => <button key={index} onClick={() => downloadSupportAttachment(attachment)}><Download size={14} />{attachment.filename} <span>{Math.max(1,Math.round((attachment.size||0)/1024))} KB</span></button>)}</div>}
+              <form className="tcadmin-support-reply" onSubmit={sendSupportReply}><label htmlFor="tcadmin-support-reply">Reply to original sender</label><textarea id="tcadmin-support-reply" rows={5} maxLength={20000} value={supportReply} onChange={e => setSupportReply(e.target.value)} placeholder="Write your reply…" required /><div><span>Replies can only go to the sender of this message.</span><button className="tcadmin-save" type="submit" disabled={supportReplyBusy || !supportReply.trim()}><Send size={14} />{supportReplyBusy ? "Sending…" : "Send reply"}</button></div></form>
+            </div> : <div className="tcadmin-support-empty"><Mail size={26} /><strong>Select a conversation</strong><span>Choose a message to read its full contents, view attachments, and reply.</span></div>}
+          </div>
+        </div> : <div className="tcadmin-support-split"><div className="tcadmin-support-list"><div className="tcadmin-support-search">Sign in to load the support inbox</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>No mailbox connected</strong><span>Log in with your employee @theegget.com mailbox to view customer messages.</span></div></div><div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Support workspace</strong><span>Your messages and replies will appear here after mailbox sign-in.</span></div></div></div>}
+        <div className="tcadmin-support-note"><ShieldCheck size={15} /> Replies are sent only to the sender of the selected incoming message. Arbitrary direct emails and announcements remain unavailable to Support staff. Mailbox credentials remain in this browser session's memory and are not saved to browser storage.</div>
       </section>}
 
       {activeSection === "apps" && CAN_SEND_MAIL(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>

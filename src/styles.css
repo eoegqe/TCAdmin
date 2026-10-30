@@ -57,3 +57,46 @@
 .tcadmin-verification{display:flex!important;align-items:flex-start;gap:9px!important;line-height:1.6}
 .tcadmin-verification input{margin:1px 0 0}
 @media(max-width:640px){.tcadmin-mailbox-login{grid-template-columns:1fr}.tcadmin-mailbox-login>div:first-child,.tcadmin-mailbox-login-actions{grid-column:auto}.tcadmin-mailbox-session{align-items:flex-end;flex-direction:column}.tcadmin-subaccount-row{align-items:flex-start}}
+
+.tcadmin-support-connected{grid-template-columns:minmax(230px,.72fr) minmax(0,1.8fr);min-height:570px}
+.tcadmin-support-search{padding:0;background:#18181b}
+.tcadmin-support-search input{width:100%;border:0;outline:0;background:transparent;color:#ececf0;padding:11px 12px;font-size:11px}
+.tcadmin-support-message-list{display:grid;gap:5px;margin-top:12px;max-height:510px;overflow:auto}
+.tcadmin-support-message{display:grid;gap:7px;width:100%;padding:12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#bcbcc4;text-align:left}
+.tcadmin-support-message:hover,.tcadmin-support-message.active{background:#222227;border-color:#3a3a42}
+.tcadmin-support-message-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tcadmin-support-message-top strong{font-size:10px;color:#e5e5e9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcadmin-support-message-top i{width:6px;height:6px;border-radius:50%;background:#b9a4ff;flex-shrink:0}
+.tcadmin-support-message-subject{font-size:11px;color:#c9c9d0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcadmin-support-message-date{font-size:9px;color:#777780}
+.tcadmin-support-message-view{display:block;min-width:0;overflow:auto}
+.tcadmin-support-message-content{width:100%;max-width:900px;margin:0 auto}
+.tcadmin-support-message-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-bottom:16px;border-bottom:1px solid #303035}
+.tcadmin-support-message-heading h3{margin:0 0 7px;color:#ededf0;font-size:16px;overflow-wrap:anywhere}
+.tcadmin-support-message-heading span{color:#888891;font-size:10px;overflow-wrap:anywhere}
+.tcadmin-support-message-body{min-height:150px;max-height:420px;overflow:auto;margin:18px 0;padding:17px;border:1px solid #303035;border-radius:8px;background:#151517;color:#d0d0d6;font:12px/1.75 'DM Sans',sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+.tcadmin-support-attachments{display:grid;gap:8px;margin:0 0 18px}
+.tcadmin-support-attachments>strong{display:flex;align-items:center;gap:7px;color:#d5d5da;font-size:11px}
+.tcadmin-support-attachments button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:1px solid #33333a;border-radius:7px;background:#1a1a1e;color:#d0d0d6;text-align:left;font-size:10px}
+.tcadmin-support-attachments button span{margin-left:auto;color:#85858d}
+.tcadmin-support-reply{display:grid;gap:9px;padding-top:15px;border-top:1px solid #303035}
+.tcadmin-support-reply label{color:#d6d6dc;font-size:11px;font-weight:600}
+.tcadmin-support-reply textarea{width:100%;resize:vertical;box-sizing:border-box;padding:12px;border:1px solid #3a3a42;border-radius:8px;background:#17171b;color:#f0f0f2;font:12px/1.6 'DM Sans',sans-serif}
+.tcadmin-support-reply>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tcadmin-support-reply>div>span{color:#85858d;font-size:10px;line-height:1.5}
+.tcadmin-support-reply button{display:inline-flex;align-items:center;gap:7px}
+.tcadmin-banned-screen{width:100%;padding:28px 20px}
+.tcadmin-banned-card{width:min(100%,480px);padding:30px;border:1px solid #39343a;border-radius:14px;background:#171619;box-shadow:0 18px 55px #0005;text-align:left}
+.tcadmin-banned-icon{width:48px;height:48px;display:grid;place-items:center;margin-bottom:22px;border:1px solid #5b383d;border-radius:12px;background:#2c1d21;color:#e99a9f}
+.tcadmin-banned-card .tcadmin-kicker{margin-bottom:8px}
+.tcadmin-banned-card h1{margin:0 0 10px;font-size:27px}
+.tcadmin-banned-card .tcadmin-subtitle{max-width:none;margin-bottom:22px;text-align:left}
+.tcadmin-ban-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:13px;border:1px solid #343138;border-radius:9px;background:#131215}
+.tcadmin-ban-details>div{display:grid;gap:6px;min-width:0}
+.tcadmin-ban-details span{color:#85818b;font-size:9px}
+.tcadmin-ban-details strong{color:#e3e0e5;font-size:11px;overflow-wrap:anywhere}
+.tcadmin-ban-details .tcadmin-ban-status{color:#e99a9f}
+.tcadmin-ban-help{margin:18px 0 13px;color:#a6a1aa;font-size:11px;line-height:1.7}
+.tcadmin-ban-contact{display:flex;align-items:center;justify-content:center;width:100%;padding:11px 14px;margin-bottom:9px;border:1px solid #454149;border-radius:7px;background:#e9e7eb;color:#17151a;text-decoration:none;font-size:11px;font-weight:700}
+.tcadmin-banned-card .tcadmin-secondary{width:100%;justify-content:center}
+@media(max-width:640px){.tcadmin-support-connected{grid-template-columns:1fr}.tcadmin-support-message-list{max-height:260px}.tcadmin-support-message-view{min-height:360px;padding:18px 14px}.tcadmin-support-message-heading{flex-direction:column}.tcadmin-ban-details{grid-template-columns:1fr}.tcadmin-banned-card{padding:23px}}
