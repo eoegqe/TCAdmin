@@ -37,3 +37,23 @@
 .tcadmin-support-note{display:flex;align-items:flex-start;gap:9px;padding:15px 19px;border-top:1px solid #29292d;color:#92929a;font-size:11px;line-height:1.6}
 .tcadmin-support-note svg{flex-shrink:0;color:#b9b9c1}
 @media(max-width:640px){.tcadmin-navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tcadmin-nav-button{justify-content:center}.tcadmin-support-split{grid-template-columns:1fr}.tcadmin-support-list{border-right:0;border-bottom:1px solid #29292d}.tcadmin-support-list .tcadmin-support-empty{min-height:150px}.tcadmin-support-conversation{min-height:240px}}
+
+.tcadmin-mailbox-session{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.tcadmin-mailbox-login{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px 20px;border-bottom:1px solid #29292d;background:#151517}
+.tcadmin-mailbox-login>div:first-child{grid-column:1/-1}
+.tcadmin-mailbox-login strong,.tcadmin-subaccounts-panel h3{font-size:14px}
+.tcadmin-mailbox-login p,.tcadmin-subaccounts-panel>div:first-child p{margin:5px 0 0;color:#85858d;font-size:11px;line-height:1.6}
+.tcadmin-mailbox-login label,.tcadmin-subaccount-add label{display:grid;gap:7px;color:#a1a1aa;font-size:11px}
+.tcadmin-mailbox-login input,.tcadmin-subaccount-add input[type=number]{width:100%;box-sizing:border-box;background:#19191c;color:#f0f0f2;border:1px solid #3a3a40;border-radius:7px;padding:11px;font-size:13px}
+.tcadmin-mailbox-login-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}
+.tcadmin-subaccounts-panel{border:1px solid #303035;border-radius:10px;padding:18px;margin-top:16px}
+.tcadmin-subaccounts-panel h3{margin:0}
+.tcadmin-subaccount-list{display:grid;gap:8px;margin:16px 0}
+.tcadmin-subaccount-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #303035;border-radius:8px;background:#19191c}
+.tcadmin-subaccount-row strong,.tcadmin-subaccount-row span{display:block}
+.tcadmin-subaccount-row strong{font-size:12px}
+.tcadmin-subaccount-row span{margin-top:5px;color:#85858d;font-size:10px;overflow-wrap:anywhere}
+.tcadmin-subaccount-add{display:grid;gap:12px;padding-top:16px;border-top:1px solid #303035}
+.tcadmin-verification{display:flex!important;align-items:flex-start;gap:9px!important;line-height:1.6}
+.tcadmin-verification input{margin:1px 0 0}
+@media(max-width:640px){.tcadmin-mailbox-login{grid-template-columns:1fr}.tcadmin-mailbox-login>div:first-child,.tcadmin-mailbox-login-actions{grid-column:auto}.tcadmin-mailbox-session{align-items:flex-end;flex-direction:column}.tcadmin-subaccount-row{align-items:flex-start}}

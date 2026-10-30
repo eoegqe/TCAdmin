@@ -14,6 +14,18 @@ async function getIdentity(request) {
   return Number.isSafeInteger(id) && id > 0 ? { id } : null;
 }
 
+
+async function authorizeStaff(request, env) {
+  let identity;
+  try { identity = await getIdentity(request); } catch { return { response: Response.json({ error: "tc_accounts_unavailable" }, { status: 503 }) }; }
+  if (!identity) return { response: Response.json({ error: "not_authenticated" }, { status: 401 }) };
+  try {
+    const actor = await env.TC.prepare("SELECT id, role, status FROM users WHERE id = ?").bind(identity.id).first();
+    if (!actor || actor.status !== "active" || Number(actor.role) < 2) return { response: Response.json({ error: "staff_only", message: "Support role or higher is required." }, { status: 403 }) };
+    return { identity, actor };
+  } catch { return { response: Response.json({ error: "database_unavailable" }, { status: 503 }) }; }
+}
+
 async function authorizeOwner(request, env) {
   let identity;
   try { identity = await getIdentity(request); } catch { return { response: Response.json({ error: "tc_accounts_unavailable" }, { status: 503 }) }; }
@@ -27,13 +39,14 @@ async function authorizeOwner(request, env) {
 }
 
 export async function onRequestGet({ request, env }) {
-  const auth = await authorizeOwner(request, env);
+  const auth = await authorizeStaff(request, env);
   if (auth.response) return auth.response;
   try {
-    const result = await env.TC.prepare("SELECT id, username, status, role FROM users ORDER BY id ASC").all();
+    const result = await env.TC.prepare("SELECT id, username, email, status, role FROM users ORDER BY id ASC").all();
     return Response.json({ accounts: (result.results || []).map(row => ({
       id: row.id,
       username: row.username,
+      email: row.email,
       status: row.status,
       role: NUMBER_TO_ROLE[Number(row.role ?? 1)] || "user"
     })) }, { headers: { "Cache-Control": "no-store" } });
