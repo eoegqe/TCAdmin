@@ -183,6 +183,7 @@ export default function App() {
         body: JSON.stringify({ user_id: account.id, role })
       });
       setNotice(`Role updated for TC account #${account.id}.`);
+      setSelectedAccount(current => current?.id === account.id ? { ...current, role } : current);
       await loadAccounts();
     } catch (e) {
       setError(e.message || "Could not update the role.");
