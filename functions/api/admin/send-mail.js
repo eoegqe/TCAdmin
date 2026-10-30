@@ -49,13 +49,7 @@ function base64Raw(value) {
 }
 
 function base64Text(value) {
-  return base64Raw(value).replace(/.{1,76}/g, "function base64Text(value) {
-  return base64Raw(value).replace(/.{1,76}/g, "function base64Text(value) {
-  const bytes = encoder.encode(value);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/.{1,76}/g, "$&\r\n").trim();
-}\r\n").trim();
+  return base64Raw(value).replace(/.{1,76}/g, "$&\\r\\n").trim();
 }
 
 function smtpAddress\\r\\n").trim();
