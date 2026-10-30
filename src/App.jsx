@@ -96,12 +96,14 @@ export default function App() {
           const response = await fetch("/api/auth/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.access_token) throw new Error(result.error_description || result.error || "Could not finish TC sign-in.");
+          // Persist the token before leaving the callback URL. A full navigation
+          // to the app root makes the next load use the normal authenticated
+          // startup path instead of leaving the browser parked on /oauth/callback.
           sessionStorage.setItem("tcadmin_access_token", result.access_token);
           sessionStorage.removeItem("tcadmin_pkce_verifier");
           sessionStorage.removeItem("tcadmin_oauth_state");
-          url.search = "";
-          window.history.replaceState({}, "", url.pathname);
-          if (!cancelled) setToken(result.access_token);
+          window.location.replace("/"); 
+          return;
         }
       } catch (e) {
         if (!cancelled) setError(e.message || "Sign-in failed.");
