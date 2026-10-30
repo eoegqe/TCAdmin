@@ -41,11 +41,20 @@ function escapeHtml(value) {
   })[character]);
 }
 
+function base64Raw(value) {
+  const bytes = encoder.encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 function base64Text(value) {
+  return base64Raw(value).replace(/.{1,76}/g, "function base64Text(value) {
   const bytes = encoder.encode(value);
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/.{1,76}/g, "$&\r\n").trim();
+}\r\n").trim();
 }
 
 function smtpAddress(value) {
@@ -97,8 +106,8 @@ async function sendMailWithIonos(env, { to, subject, message }) {
     if (!greeting.startsWith("220")) throw new Error("SMTP server greeting failed");
     await command("EHLO admin.theegget.com", [250]);
     await command("AUTH LOGIN", [334]);
-    await command(btoa(env.IONOS_SMTP_USER), [334]);
-    await command(btoa(env.IONOS_SMTP_PASSWORD), [235]);
+    await command(base64Raw(env.IONOS_SMTP_USER), [334]);
+    await command(base64Raw(env.IONOS_SMTP_PASSWORD), [235]);
     await command(`MAIL FROM:<${FROM_ADDRESS}>`, [250]);
     await command(`RCPT TO:<${smtpAddress(to)}>`, [250, 251]);
     await command("DATA", [354]);
@@ -106,7 +115,7 @@ async function sendMailWithIonos(env, { to, subject, message }) {
     const boundary = `tcadmin-${crypto.randomUUID()}`;
     const plain = message.replace(/\r\n|\r/g, "\n").replace(/\n/g, "\r\n");
     const html = escapeHtml(message).replace(/\r\n|\r|\n/g, "<br>");
-    const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+    const encodedSubject = `=?UTF-8?B?${base64Raw(subject)}?=`;
     const mime = [
       `From: Theegget Creations <${FROM_ADDRESS}>`,
       `To: <${smtpAddress(to)}>`,
