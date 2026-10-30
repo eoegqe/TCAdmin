@@ -52,11 +52,8 @@ function base64Text(value) {
   return base64Raw(value).replace(/.{1,76}/g, "$&\\r\\n").trim();
 }
 
-function smtpAddress\\r\\n").trim();
-}
-
 function smtpAddress(value) {
-  return value.replace(/[\r\n<>]/g, "");
+  return value.replace(/[\\r\\n<>]/g, "");
 }
 
 async function sendMailWithIonos(env, { to, subject, message }) {
