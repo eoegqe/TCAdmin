@@ -8,8 +8,12 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
 
+[[routes]]
+pattern = "admin.theegget.com"
+zone_name = "theegget.com"
+custom_domain = true
+
 [[d1_databases]]
 binding = "TC"
 database_name = "tc"
 database_id = "fd0e9d90-b443-4002-8378-f0d817fb415b"
-
