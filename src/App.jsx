@@ -74,6 +74,7 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [roleChanges, setRoleChanges] = useState({});
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [mailMode, setMailMode] = useState("direct");
   const [mailTo, setMailTo] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailMessage, setMailMessage] = useState("");
@@ -251,11 +252,11 @@ export default function App() {
     setError("");
     setNotice("");
     try {
-      await api("/api/admin/send-mail", token, {
+      const result = await api("/api/admin/send-mail", token, {
         method: "POST",
-        body: JSON.stringify({ to: mailTo, subject: mailSubject, message: mailMessage })
+        body: JSON.stringify({ to: mailTo, announcement: mailMode === "announcement", subject: mailSubject, message: mailMessage })
       });
-      setNotice(`Email sent to ${mailTo.trim()} from notify@theegget.com.`);
+      setNotice(mailMode === "announcement" ? `Announcement sent to ${"${result.recipient_count}"} active TC accounts from notify@theegget.com.` : `Email sent to ${mailTo.trim()} from notify@theegget.com.`);
       setMailTo("");
       setMailSubject("");
       setMailMessage("");
@@ -303,20 +304,24 @@ export default function App() {
       {notice && <div className="tcadmin-notice">{notice}</div>}
 
       {CAN_SEND_MAIL(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
-        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Send email</h2><p>Send a message to a TC account holder or another recipient from notify@theegget.com.</p></div></div></div>
+        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Email center</h2><p>Send a private email to one recipient or a universal announcement to active TC accounts.</p></div></div></div>
         <form onSubmit={sendMail} style={{ padding: 20, display: "grid", gap: 14 }}>
           <div style={{ color: "#85858d", fontSize: 11 }}>From <strong style={{ color: "#e4e4e7" }}>notify@theegget.com</strong></div>
-          <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Recipient
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className={mailMode === "direct" ? "tcadmin-save" : "tcadmin-refresh"} onClick={() => setMailMode("direct")}>Direct email</button>
+            <button type="button" className={mailMode === "announcement" ? "tcadmin-save" : "tcadmin-refresh"} onClick={() => setMailMode("announcement")}>Announcement to all users</button>
+          </div>
+          {mailMode === "direct" ? <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Recipient
             <input type="email" required maxLength={254} value={mailTo} onChange={e => setMailTo(e.target.value)} placeholder="recipient@example.com" style={{ width: "100%", boxSizing: "border-box", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13 }} />
-          </label>
+          </label> : <p className="tcadmin-muted" style={{ margin: 0 }}>This announcement will be sent to every active TC account with a valid email address. Recipients will not see one another's email addresses.</p>}
           <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Subject
             <input required maxLength={180} value={mailSubject} onChange={e => setMailSubject(e.target.value)} placeholder="Email subject" style={{ width: "100%", boxSizing: "border-box", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13 }} />
           </label>
           <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Message
             <textarea required maxLength={20000} rows={8} value={mailMessage} onChange={e => setMailMessage(e.target.value)} placeholder="Write your message…" style={{ width: "100%", boxSizing: "border-box", resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13, lineHeight: 1.6 }} />
           </label>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}><button className="tcadmin-save" type="submit" disabled={mailSending || busy || !mailTo.trim() || !mailSubject.trim() || !mailMessage.trim()}><Mail size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />{mailSending ? "Sending…" : "Send email"}</button></div>
-          <p className="tcadmin-muted" style={{ margin: 0 }}>Available to Support staff and higher. The sender address is fixed and cannot be changed here.</p>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}><button className="tcadmin-save" type="submit" disabled={mailSending || busy || (mailMode === "direct" && !mailTo.trim()) || !mailSubject.trim() || !mailMessage.trim()}><Mail size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />{mailSending ? "Sending…" : mailMode === "announcement" ? "Send announcement" : "Send direct email"}</button></div>
+          <p className="tcadmin-muted" style={{ margin: 0 }}>Available to Support staff and higher. Announcements go to active TC accounts; direct emails go to one recipient. The sender address is fixed.</p>
         </form>
       </section>}
 
