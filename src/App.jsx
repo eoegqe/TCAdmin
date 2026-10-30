@@ -256,7 +256,7 @@ export default function App() {
         method: "POST",
         body: JSON.stringify({ to: mailTo, announcement: mailMode === "announcement", subject: mailSubject, message: mailMessage })
       });
-      setNotice(mailMode === "announcement" ? `Announcement sent to ${"${result.recipient_count}"} active TC accounts from notify@theegget.com.` : `Email sent to ${mailTo.trim()} from notify@theegget.com.`);
+      setNotice(mailMode === "announcement" ? `Announcement sent to ${result.recipient_count} active TC accounts from notify@theegget.com.` : `Email sent to ${mailTo.trim()} from notify@theegget.com.`);
       setMailTo("");
       setMailSubject("");
       setMailMessage("");
