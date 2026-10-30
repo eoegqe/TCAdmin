@@ -56,7 +56,7 @@ function smtpAddress(value) {
   return value.replace(/[\r\n<>]/g, "");
 }
 
-async function sendMailWithIonos(env, { to, subject, message }) {
+async function sendMailWithIonos(env, { recipients, subject, message }) {
   if (!env.IONOS_SMTP_USER || !env.IONOS_SMTP_PASSWORD) {
     throw new Error("IONOS SMTP secrets are missing from the TCAdmin Worker");
   }
@@ -104,7 +104,7 @@ async function sendMailWithIonos(env, { to, subject, message }) {
     await command(base64Raw(env.IONOS_SMTP_USER), [334]);
     await command(base64Raw(env.IONOS_SMTP_PASSWORD), [235]);
     await command(`MAIL FROM:<${FROM_ADDRESS}>`, [250]);
-    await command(`RCPT TO:<${smtpAddress(to)}>`, [250, 251]);
+    for (const recipient of recipients) await command(`RCPT TO:<${smtpAddress(recipient)}>`, [250, 251]);
     await command("DATA", [354]);
 
     const boundary = `tcadmin-${crypto.randomUUID()}`;
@@ -113,7 +113,7 @@ async function sendMailWithIonos(env, { to, subject, message }) {
     const encodedSubject = `=?UTF-8?B?${base64Raw(subject)}?=`;
     const mime = [
       `From: Theegget Creations <${FROM_ADDRESS}>`,
-      `To: <${smtpAddress(to)}>`,
+      recipients.length === 1 ? `To: <${smtpAddress(recipients[0])}>` : "To: undisclosed-recipients:;",
       `Subject: ${encodedSubject}`,
       `Date: ${new Date().toUTCString()}`,
       `Message-ID: <${crypto.randomUUID()}@theegget.com>`,
@@ -152,23 +152,37 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400); }
 
+  const announcement = body?.announcement === true;
   const to = typeof body?.to === "string" ? body.to.trim() : "";
   const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
   const message = typeof body?.message === "string" ? body.message.trim() : "";
 
-  if (to.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to)) {
-    return json({ error: "invalid_recipient", message: "Enter one valid recipient email address." }, 400);
-  }
-  if (!subject || subject.length > 180 || /[\r\n]/.test(subject)) {
+  if (!subject || subject.length > 180 || /[\\r\\n]/.test(subject)) {
     return json({ error: "invalid_subject", message: "Subject must be between 1 and 180 characters." }, 400);
   }
   if (!message || message.length > 20000) {
     return json({ error: "invalid_message", message: "Message must be between 1 and 20,000 characters." }, 400);
   }
 
+  let recipients;
+  if (announcement) {
+    try {
+      const result = await env.TC.prepare("SELECT email FROM users WHERE status = 'active' AND email IS NOT NULL AND email <> ''").all();
+      recipients = [...new Set((result.results || []).map(row => String(row.email).trim()).filter(email => /^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$/.test(email)))];
+    } catch {
+      return json({ error: "recipient_lookup_failed", message: "TC accounts could not be loaded for this announcement." }, 503);
+    }
+    if (!recipients.length) return json({ error: "no_recipients", message: "There are no active TC accounts with valid email addresses." }, 400);
+  } else {
+    if (to.length > 254 || !/^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$/.test(to)) {
+      return json({ error: "invalid_recipient", message: "Enter one valid recipient email address." }, 400);
+    }
+    recipients = [to];
+  }
+
   try {
-    await sendMailWithIonos(env, { to, subject, message });
-    return json({ success: true, from: FROM_ADDRESS });
+    await sendMailWithIonos(env, { recipients, subject, message });
+    return json({ success: true, from: FROM_ADDRESS, recipient_count: recipients.length, announcement });
   } catch (error) {
     console.error("TCAdmin SMTP email send failed:", String(error?.stack || error?.message || error));
     return json({
