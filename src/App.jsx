@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -13,6 +13,7 @@ const ROLES = [
   { value: "banned", label: "0 · Banned" }
 ];
 const CAN_MANAGE_CLIENTS = role => ["admin", "co_owner", "owner"].includes(role);
+const CAN_SEND_MAIL = role => ["support", "admin", "co_owner", "owner"].includes(role);
 
 function base64url(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -73,6 +74,10 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [roleChanges, setRoleChanges] = useState({});
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [mailTo, setMailTo] = useState("");
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailMessage, setMailMessage] = useState("");
+  const [mailSending, setMailSending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,6 +245,27 @@ export default function App() {
     }
   }
 
+  async function sendMail(event) {
+    event.preventDefault();
+    setMailSending(true);
+    setError("");
+    setNotice("");
+    try {
+      await api("/api/admin/send-mail", token, {
+        method: "POST",
+        body: JSON.stringify({ to: mailTo, subject: mailSubject, message: mailMessage })
+      });
+      setNotice(`Email sent to ${mailTo.trim()} from notify@theegget.com.`);
+      setMailTo("");
+      setMailSubject("");
+      setMailMessage("");
+    } catch (e) {
+      setError(e.message || "Could not send the email.");
+    } finally {
+      setMailSending(false);
+    }
+  }
+
   async function signOut() {
     const current = token;
     sessionStorage.removeItem("tcadmin_access_token");
@@ -275,6 +301,24 @@ export default function App() {
       <div className="tcadmin-page-heading"><div><p className="tcadmin-kicker">THEEGGET CREATIONS / ADMIN</p><h1>TC administration</h1><p>Manage registered applications and access to TCAdmin.</p></div><span className="tcadmin-role-chip">{ROLES.find(r => r.value === user.role)?.label || user.role}</span></div>
       {error && <div className="tcadmin-error"><AlertCircle size={17} />{error}</div>}
       {notice && <div className="tcadmin-notice">{notice}</div>}
+
+      {CAN_SEND_MAIL(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
+        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Send email</h2><p>Send a message to a TC account holder or another recipient from notify@theegget.com.</p></div></div></div>
+        <form onSubmit={sendMail} style={{ padding: 20, display: "grid", gap: 14 }}>
+          <div style={{ color: "#85858d", fontSize: 11 }}>From <strong style={{ color: "#e4e4e7" }}>notify@theegget.com</strong></div>
+          <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Recipient
+            <input type="email" required maxLength={254} value={mailTo} onChange={e => setMailTo(e.target.value)} placeholder="recipient@example.com" style={{ width: "100%", boxSizing: "border-box", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13 }} />
+          </label>
+          <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Subject
+            <input required maxLength={180} value={mailSubject} onChange={e => setMailSubject(e.target.value)} placeholder="Email subject" style={{ width: "100%", boxSizing: "border-box", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13 }} />
+          </label>
+          <label style={{ display: "grid", gap: 6, color: "#a1a1aa", fontSize: 11 }}>Message
+            <textarea required maxLength={20000} rows={8} value={mailMessage} onChange={e => setMailMessage(e.target.value)} placeholder="Write your message…" style={{ width: "100%", boxSizing: "border-box", resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 11, fontSize: 13, lineHeight: 1.6 }} />
+          </label>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}><button className="tcadmin-save" type="submit" disabled={mailSending || busy || !mailTo.trim() || !mailSubject.trim() || !mailMessage.trim()}><Mail size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />{mailSending ? "Sending…" : "Send email"}</button></div>
+          <p className="tcadmin-muted" style={{ margin: 0 }}>Available to Support staff and higher. The sender address is fixed and cannot be changed here.</p>
+        </form>
+      </section>}
 
       {CAN_MANAGE_CLIENTS(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><KeyRound size={19} /><div><h2>Application OAuth registrations</h2><p>View and manage registered client IDs across TC apps. Admin role or higher is required.</p></div></div><button className="tcadmin-refresh" onClick={loadClients} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
