@@ -13,6 +13,3 @@ binding = "TC"
 database_name = "tc"
 database_id = "fd0e9d90-b443-4002-8378-f0d817fb415b"
 
-[[send_email]]
-name = "EMAIL"
-remote = true
