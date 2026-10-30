@@ -3,6 +3,7 @@ import { onRequestPost as exchangeToken } from "../functions/api/auth/token.js";
 import { onRequestGet as currentUser } from "../functions/api/auth/me.js";
 import { onRequestGet as listRoles, onRequestPost as updateRole } from "../functions/api/admin/roles.js";
 import { onRequestGet as listOAuthClients, onRequestPost as updateOAuthClient, onRequestDelete as deleteOAuthClient } from "../functions/api/admin/oauth-clients.js";
+import { onRequestPost as sendAdminMail } from "../functions/api/admin/send-mail.js";
 
 const routes = new Map([
   ["GET /api/health", health],
@@ -12,7 +13,8 @@ const routes = new Map([
   ["POST /api/admin/roles", updateRole],
   ["GET /api/admin/oauth-clients", listOAuthClients],
   ["POST /api/admin/oauth-clients", updateOAuthClient],
-  ["DELETE /api/admin/oauth-clients", deleteOAuthClient]
+  ["DELETE /api/admin/oauth-clients", deleteOAuthClient],
+  ["POST /api/admin/send-mail", sendAdminMail]
 ]);
 
 export default {
