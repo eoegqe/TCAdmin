@@ -42,13 +42,15 @@ export async function onRequestGet({ request, env }) {
   const auth = await authorizeStaff(request, env);
   if (auth.response) return auth.response;
   try {
-    const result = await env.TC.prepare("SELECT id, username, email, status, role FROM users ORDER BY id ASC").all();
+    await env.TC.prepare("CREATE TABLE IF NOT EXISTS tcadmin_bans (user_id INTEGER PRIMARY KEY, reason TEXT NOT NULL, actor_id INTEGER NOT NULL, created_at TEXT NOT NULL)").run();
+    const result = await env.TC.prepare("SELECT u.id, u.username, u.email, u.status, u.role, b.reason AS ban_reason FROM users u LEFT JOIN tcadmin_bans b ON b.user_id = u.id ORDER BY u.id ASC").all();
     return Response.json({ accounts: (result.results || []).map(row => ({
       id: row.id,
       username: row.username,
       email: row.email,
       status: row.status,
-      role: NUMBER_TO_ROLE[Number(row.role ?? 1)] || "user"
+      role: NUMBER_TO_ROLE[Number(row.role ?? 1)] || "user",
+      ban_reason: row.ban_reason || ""
     })) }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "database_unavailable", message: "Could not load TC Accounts roles." }, { status: 503 });
@@ -64,12 +66,20 @@ export async function onRequestPost({ request, env }) {
   const role = body?.role;
   if (!Number.isSafeInteger(userId) || userId <= 1) return Response.json({ error: "invalid_user", message: "The owner account cannot be modified." }, { status: 400 });
   if (!Object.hasOwn(ROLE_TO_NUMBER, role)) return Response.json({ error: "invalid_role" }, { status: 400 });
+  const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
+  if (role === "banned" && (reason.length < 3 || reason.length > 1000)) return Response.json({ error: "ban_reason_required", message: "Enter a ban reason between 3 and 1,000 characters." }, { status: 400 });
   try {
     const target = await env.TC.prepare("SELECT id, role FROM users WHERE id = ?").bind(userId).first();
     if (!target) return Response.json({ error: "account_not_found" }, { status: 404 });
     const nextRole = ROLE_TO_NUMBER[role];
     const now = new Date().toISOString();
+    await env.TC.prepare("CREATE TABLE IF NOT EXISTS tcadmin_bans (user_id INTEGER PRIMARY KEY, reason TEXT NOT NULL, actor_id INTEGER NOT NULL, created_at TEXT NOT NULL)").run();
     await env.TC.prepare("UPDATE users SET role = ?, updated_at = ? WHERE id = ? AND id <> 1").bind(nextRole, now, userId).run();
+    if (role === "banned") {
+      await env.TC.prepare("INSERT INTO tcadmin_bans(user_id, reason, actor_id, created_at) VALUES(?, ?, 1, ?) ON CONFLICT(user_id) DO UPDATE SET reason = excluded.reason, actor_id = excluded.actor_id, created_at = excluded.created_at").bind(userId, reason, now).run();
+    } else {
+      await env.TC.prepare("DELETE FROM tcadmin_bans WHERE user_id = ?").bind(userId).run();
+    }
     await env.TC.prepare("INSERT INTO tcadmin_role_audit(actor_id, target_user_id, previous_role, new_role, created_at) VALUES(1, ?, ?, ?, ?)").bind(userId, Number(target.role ?? 1), nextRole, now).run();
     return Response.json({ success: true, user_id: userId, role }, { headers: { "Cache-Control": "no-store" } });
   } catch {
