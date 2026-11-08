@@ -215,7 +215,7 @@ export default function App() {
         body: JSON.stringify({ user_id: account.id, role, reason })
       });
       setNotice(`Role updated for TC account #${account.id}.`);
-      setSelectedAccount(current => current?.id === account.id ? { ...current, role } : current);
+      setSelectedAccount(current => current?.id === account.id ? { ...current, role, ban_reason: role === "banned" ? reason : "" } : current);
       await loadAccounts();
     } catch (e) {
       setError(e.message || "Could not update the role.");
