@@ -197,13 +197,22 @@ export default function App() {
   async function saveRole(account) {
     const role = roleChanges[account.id];
     if (!role) return;
+    let reason = "";
+    if (role === "banned") {
+      reason = window.prompt("Enter the reason for banning " + account.username + ":") || "";
+      reason = reason.trim();
+      if (reason.length < 3 || reason.length > 1000) {
+        setError("A ban reason between 3 and 1,000 characters is required. The account was not changed.");
+        return;
+      }
+    }
     setBusy(true);
     setError("");
     setNotice("");
     try {
       await api("/api/admin/roles", token, {
         method: "POST",
-        body: JSON.stringify({ user_id: account.id, role })
+        body: JSON.stringify({ user_id: account.id, role, reason })
       });
       setNotice(`Role updated for TC account #${account.id}.`);
       setSelectedAccount(current => current?.id === account.id ? { ...current, role } : current);
@@ -617,6 +626,7 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span style={{ color: "#85858d" }}>Email</span><strong>{selectedAccount.email || "Not provided"}</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span style={{ color: "#85858d" }}>Current role</span><strong>{ROLES.find(r => r.value === selectedAccount.role)?.label || selectedAccount.role}</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><span style={{ color: "#85858d" }}>Account status</span><strong>{selectedAccount.status || "Not provided"}</strong></div>
+              {selectedAccount.role === "banned" && <div style={{ display: "grid", gap: 6 }}><span style={{ color: "#85858d" }}>Ban reason</span><strong style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{selectedAccount.ban_reason || "No reason recorded"}</strong></div>}
             </div>
           </section>
           <section className="tcadmin-subaccounts-panel">
