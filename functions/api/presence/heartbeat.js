@@ -1,5 +1,5 @@
 export async function onRequestPost({ request, env }) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return Response.json({ error: "not_authenticated" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   let identity;
   try {
