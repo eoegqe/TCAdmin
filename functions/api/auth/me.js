@@ -17,11 +17,11 @@ export async function onRequestGet({ request, env }) {
   const id = Number(identity.sub);
   if (!Number.isSafeInteger(id) || id < 1) return Response.json({ error: "invalid_identity" }, { status: 401 });
   try {
-    const account = await env.TC.prepare("SELECT id, username, status, role FROM users WHERE id = ?").bind(id).first();
+    const account = await env.TC.prepare("SELECT id, username, status, role, last_heartbeat_at FROM users WHERE id = ?").bind(id).first();
     if (!account || account.status !== "active") return Response.json({ error: "account_unavailable" }, { status: 403, headers: { "Cache-Control": "no-store" } });
     const role = ROLE_NAMES[Number(account.role ?? 1)];
     if (!role) return Response.json({ error: "invalid_role", message: "This account has an invalid access role." }, { status: 403 });
-    return Response.json({ user: { id: account.id, username: account.username, role } }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ user: { id: account.id, username: account.username, role, is_online: Boolean(account.last_heartbeat_at && Date.now() - Date.parse(account.last_heartbeat_at) < 90000) } }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "database_unavailable", message: "The TC Accounts role field is not available yet." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
