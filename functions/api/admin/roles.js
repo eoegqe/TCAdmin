@@ -43,14 +43,14 @@ export async function onRequestGet({ request, env }) {
   if (auth.response) return auth.response;
   try {
     await env.TC.prepare("CREATE TABLE IF NOT EXISTS tcadmin_bans (user_id INTEGER PRIMARY KEY, reason TEXT NOT NULL, actor_id INTEGER NOT NULL, created_at TEXT NOT NULL)").run();
-    const result = await env.TC.prepare("SELECT u.id, u.username, u.email, u.status, u.role, b.reason AS ban_reason FROM users u LEFT JOIN tcadmin_bans b ON b.user_id = u.id ORDER BY u.id ASC").all();
+    const result = await env.TC.prepare("SELECT u.id, u.username, u.email, u.status, u.role, u.last_heartbeat_at, b.reason AS ban_reason FROM users u LEFT JOIN tcadmin_bans b ON b.user_id = u.id ORDER BY u.id ASC").all();
     return Response.json({ accounts: (result.results || []).map(row => ({
       id: row.id,
       username: row.username,
       email: row.email,
       status: row.status,
       role: NUMBER_TO_ROLE[Number(row.role ?? 1)] || "user",
-      ban_reason: row.ban_reason || ""
+      ban_reason: row.ban_reason || "", is_online: Boolean(row.last_heartbeat_at && Date.now() - Date.parse(row.last_heartbeat_at) < 90000)
     })) }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "database_unavailable", message: "Could not load TC Accounts roles." }, { status: 503 });
