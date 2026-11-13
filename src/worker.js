@@ -1,6 +1,7 @@
 import { onRequestGet as health } from "../functions/api/health.js";
 import { onRequestPost as exchangeToken } from "../functions/api/auth/token.js";
 import { onRequestGet as currentUser } from "../functions/api/auth/me.js";
+import { onRequestPost as heartbeat } from "../functions/api/presence/heartbeat.js";
 import { onRequestGet as listRoles, onRequestPost as updateRole } from "../functions/api/admin/roles.js";
 import { onRequestGet as listOAuthClients, onRequestPost as updateOAuthClient, onRequestDelete as deleteOAuthClient } from "../functions/api/admin/oauth-clients.js";
 import { onRequestPost as sendAdminMail } from "../functions/api/admin/send-mail.js";
@@ -9,6 +10,7 @@ const routes = new Map([
   ["GET /api/health", health],
   ["POST /api/auth/token", exchangeToken],
   ["GET /api/auth/me", currentUser],
+  ["POST /api/presence/heartbeat", heartbeat],
   ["GET /api/admin/roles", listRoles],
   ["POST /api/admin/roles", updateRole],
   ["GET /api/admin/oauth-clients", listOAuthClients],
