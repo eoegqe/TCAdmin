@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings, AppWindow } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -68,6 +68,9 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [clients, setClients] = useState([]);
+  const [officialApps, setOfficialApps] = useState([]);
+  const [officialAppChanges, setOfficialAppChanges] = useState({});
+  const [newOfficialApp, setNewOfficialApp] = useState({ name: "", url: "", category: "", description: "", icon: "", sort_order: 0 });
   const [clientChanges, setClientChanges] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -178,6 +181,62 @@ export default function App() {
       setBusy(false);
     }
   }
+
+
+  async function loadOfficialApps() {
+    if (!token || !CAN_MANAGE_CLIENTS(user?.role)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api("/api/admin/official-apps", token);
+      setOfficialApps(result.apps || []);
+      setOfficialAppChanges({});
+    } catch (e) {
+      setError(e.message || "Could not load official apps.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveOfficialApp(app) {
+    const draft = app ? (officialAppChanges[app.id] || app) : newOfficialApp;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api("/api/admin/official-apps", token, {
+        method: "POST",
+        body: JSON.stringify({ ...(app ? { id: app.id } : {}), ...draft })
+      });
+      setNotice(app ? `Updated ${draft.name} on the homepage.` : `Added ${draft.name} to the homepage.`);
+      if (!app) setNewOfficialApp({ name: "", url: "", category: "", description: "", icon: "", sort_order: 0 });
+      await loadOfficialApps();
+    } catch (e) {
+      setError(e.message || "Could not save the official app.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeOfficialApp(app) {
+    if (!window.confirm(`Remove "${app.name}" from Theegget Creations' homepage?`)) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api(`/api/admin/official-apps?id=${encodeURIComponent(app.id)}`, token, { method: "DELETE" });
+      setNotice(`Removed ${app.name} from the homepage.`);
+      await loadOfficialApps();
+    } catch (e) {
+      setError(e.message || "Could not remove the official app.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeSection === "apps" && token && CAN_MANAGE_CLIENTS(user?.role)) loadOfficialApps();
+  }, [activeSection, token, user?.role]);
 
   async function loadClients() {
     if (!token || !CAN_MANAGE_CLIENTS(user?.role)) return;
@@ -609,6 +668,44 @@ export default function App() {
           </div>
         </div> : <div className="tcadmin-support-split"><div className="tcadmin-support-list"><div className="tcadmin-support-search">Sign in to load the support inbox</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>No mailbox connected</strong><span>Log in with your employee @theegget.com mailbox to view customer messages.</span></div></div><div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Support workspace</strong><span>Your messages and replies will appear here after mailbox sign-in.</span></div></div></div>}
         <div className="tcadmin-support-note"><ShieldCheck size={15} /> Replies are sent only to the sender of the selected incoming message. Arbitrary direct emails and announcements remain unavailable to Support staff. Mailbox credentials remain in this browser session's memory and are not saved to browser storage.</div>
+      </section>}
+
+
+      {activeSection === "apps" && CAN_MANAGE_CLIENTS(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
+        <div className="tcadmin-panel-title"><div><AppWindow size={19} /><div><h2>Official apps</h2><p>Control which apps appear in the Apps section of Theegget Creations' homepage.</p></div></div><button className="tcadmin-refresh" onClick={loadOfficialApps} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
+        <form onSubmit={event => { event.preventDefault(); saveOfficialApp(null); }} style={{ padding: 20, display: "grid", gap: 13, borderBottom: "1px solid #29292d" }}>
+          <strong style={{ fontSize: 13 }}>Add an official app</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
+            <label style={{ color: "#a1a1aa", fontSize: 11 }}>App name<input required minLength={2} maxLength={70} value={newOfficialApp.name} onChange={e => setNewOfficialApp(v => ({ ...v, name: e.target.value }))} placeholder="App name" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+            <label style={{ color: "#a1a1aa", fontSize: 11 }}>App URL<input required type="url" maxLength={2048} value={newOfficialApp.url} onChange={e => setNewOfficialApp(v => ({ ...v, url: e.target.value }))} placeholder="https://app.theegget.com" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+            <label style={{ color: "#a1a1aa", fontSize: 11 }}>Category label<input maxLength={50} value={newOfficialApp.category} onChange={e => setNewOfficialApp(v => ({ ...v, category: e.target.value }))} placeholder="PRODUCTIVITY APP" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+            <label style={{ color: "#a1a1aa", fontSize: 11 }}>Card icon text<input maxLength={8} value={newOfficialApp.icon} onChange={e => setNewOfficialApp(v => ({ ...v, icon: e.target.value }))} placeholder="e.g. TC" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+            <label style={{ color: "#a1a1aa", fontSize: 11 }}>Display order<input type="number" step="1" value={newOfficialApp.sort_order} onChange={e => setNewOfficialApp(v => ({ ...v, sort_order: Number(e.target.value) }))} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+          </div>
+          <label style={{ color: "#a1a1aa", fontSize: 11 }}>Description<textarea maxLength={240} rows={2} value={newOfficialApp.description} onChange={e => setNewOfficialApp(v => ({ ...v, description: e.target.value }))} placeholder="Briefly describe this app." style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+          <div><button className="tcadmin-save" type="submit" disabled={busy || !newOfficialApp.name.trim() || !newOfficialApp.url.trim()}><AppWindow size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />Add to homepage</button></div>
+        </form>
+        {busy && !officialApps.length ? <p className="tcadmin-muted">Loading official apps…</p> : officialApps.length ? <div style={{ display: "grid", gap: 0 }}>
+          {officialApps.map(app => {
+            const draft = officialAppChanges[app.id] || app;
+            const changed = ["name", "url", "category", "description", "icon", "sort_order"].some(key => String(draft[key] ?? "") !== String(app[key] ?? ""));
+            return <article key={app.id} style={{ padding: 20, borderBottom: "1px solid #252529" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}><div><strong>{app.name}</strong><div style={{ color: "#85858d", fontSize: 11, marginTop: 4 }}>Homepage listing · ID {app.id}</div></div><a href={app.url} target="_blank" rel="noreferrer" style={{ color: "#d5d5dc", fontSize: 11 }}>Open app ↗</a></div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
+                {[
+                  ["name", "App name", 70],
+                  ["url", "App URL", 2048],
+                  ["category", "Category label", 50],
+                  ["icon", "Card icon text", 8]
+                ].map(([key, label, max]) => <label key={key} style={{ color: "#a1a1aa", fontSize: 11 }}>{label}<input maxLength={max} value={draft[key] || ""} onChange={e => setOfficialAppChanges(v => ({ ...v, [app.id]: { ...draft, [key]: e.target.value } }))} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>)}
+                <label style={{ color: "#a1a1aa", fontSize: 11 }}>Display order<input type="number" step="1" value={draft.sort_order ?? 0} onChange={e => setOfficialAppChanges(v => ({ ...v, [app.id]: { ...draft, sort_order: Number(e.target.value) } }))} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+              </div>
+              <label style={{ display: "block", color: "#a1a1aa", fontSize: 11, marginTop: 12 }}>Description<textarea maxLength={240} rows={2} value={draft.description || ""} onChange={e => setOfficialAppChanges(v => ({ ...v, [app.id]: { ...draft, description: e.target.value } }))} style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 13 }}><button className="tcadmin-save" disabled={busy || !changed} onClick={() => saveOfficialApp(app)}><Save size={13} style={{ verticalAlign: "middle", marginRight: 5 }} />Save changes</button><button className="tcadmin-refresh" disabled={busy} onClick={() => removeOfficialApp(app)}><Trash2 size={13} /> Remove from homepage</button></div>
+            </article>;
+          })}
+        </div> : <p className="tcadmin-muted" style={{ padding: 20 }}>No official apps are listed on the homepage.</p>}
+        <p className="tcadmin-muted" style={{ margin: 0, padding: "0 20px 18px" }}>Changes update the homepage directory after the official apps API and database migration are deployed. Admin role or higher is required.</p>
       </section>}
 
       {activeSection === "apps" && CAN_SEND_MAIL(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
