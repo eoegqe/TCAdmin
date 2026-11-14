@@ -66,6 +66,7 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const auth = await authorize(request, env);
   if (auth.response) return auth.response;
+  if (Number(auth.account.role) < ROLE_LEVEL.co_owner) return json({ error: "insufficient_role", message: "Only Co-Owners and the Owner can manage official apps." }, 403);
   let body;
   try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400); }
   const app = normalize(body);
@@ -91,6 +92,7 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   const auth = await authorize(request, env);
   if (auth.response) return auth.response;
+  if (Number(auth.account.role) < ROLE_LEVEL.co_owner) return json({ error: "insufficient_role", message: "Only Co-Owners and the Owner can manage official apps." }, 403);
   const id = Number(new URL(request.url).searchParams.get("id"));
   if (!Number.isSafeInteger(id) || id < 1) return json({ error: "invalid_id" }, 400);
   try {
