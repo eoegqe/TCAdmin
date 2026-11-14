@@ -714,7 +714,7 @@ export default function App() {
           })}
         </div> : <p className="tcadmin-muted" style={{ padding: 20 }}>No official apps are listed on the homepage.</p>}
         <p className="tcadmin-muted" style={{ margin: 0, padding: "0 20px 18px" }}>Only Co-Owners and the Owner can add, edit, or remove homepage listings.</p></>}
-        {!CAN_MANAGE_OFFICIAL_APPS(displayRole) && <p className="tcadmin-muted" style={{ padding: "0 20px 18px" }}>Read-only access. Only Co-Owners and the Owner can manage these listings.</p> }
+        {!CAN_MANAGE_OFFICIAL_APPS(displayRole) && <div style={{ padding: 20 }}><p className="tcadmin-muted">Read-only access. Only Co-Owners and the Owner can manage these listings.</p>{officialApps.length ? officialApps.map(app => <div key={app.id} style={{ padding: "10px 0", borderBottom: "1px solid #252529" }}><strong>{app.name}</strong><div className="tcadmin-muted">{app.category} · {app.description}</div><a href={app.url} target="_blank" rel="noreferrer">Open app ↗</a></div>) : <p className="tcadmin-muted">No official apps are listed on the homepage.</p>}</div>}
       </section>}
 
       {activeSection === "apps" && CAN_SEND_MAIL(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
