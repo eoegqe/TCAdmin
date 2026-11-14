@@ -5,6 +5,7 @@ import { onRequestPost as heartbeat } from "../functions/api/presence/heartbeat.
 import { onRequestGet as listRoles, onRequestPost as updateRole } from "../functions/api/admin/roles.js";
 import { onRequestGet as listOAuthClients, onRequestPost as updateOAuthClient, onRequestDelete as deleteOAuthClient } from "../functions/api/admin/oauth-clients.js";
 import { onRequestPost as sendAdminMail } from "../functions/api/admin/send-mail.js";
+import { onRequestGet as listVerificationRequests, onRequestPatch as reviewVerificationRequest } from "../functions/api/admin/verification-requests.js";
 
 const routes = new Map([
   ["GET /api/health", health],
@@ -16,7 +17,9 @@ const routes = new Map([
   ["GET /api/admin/oauth-clients", listOAuthClients],
   ["POST /api/admin/oauth-clients", updateOAuthClient],
   ["DELETE /api/admin/oauth-clients", deleteOAuthClient],
-  ["POST /api/admin/send-mail", sendAdminMail]
+  ["POST /api/admin/send-mail", sendAdminMail],
+  ["GET /api/admin/verification-requests", listVerificationRequests],
+  ["PATCH /api/admin/verification-requests", reviewVerificationRequest]
 ]);
 
 export default {
