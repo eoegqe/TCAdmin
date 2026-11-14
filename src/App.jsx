@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2 } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -81,6 +81,7 @@ export default function App() {
   const [mailMessage, setMailMessage] = useState("");
   const [mailSending, setMailSending] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
+  const [previewRole, setPreviewRole] = useState("");
   const [subAccounts, setSubAccounts] = useState([]);
   const [subAccountId, setSubAccountId] = useState("");
   const [subAccountVerified, setSubAccountVerified] = useState(false);
@@ -527,6 +528,8 @@ export default function App() {
     } catch {}
   }
 
+  const displayRole = user?.id === 1 && previewRole ? previewRole : user?.role;
+
   return <div className="tcadmin-root">
     <header className="tcadmin-header">
       <div className="tcadmin-brand"><div className="tcadmin-mark">TC</div><div><strong>Theegget Creations</strong><span>ADMINISTRATION</span></div></div>
@@ -541,7 +544,7 @@ export default function App() {
     user.role === "banned" ? <main className="tcadmin-centered tcadmin-banned-screen"><div className="tcadmin-banned-card"><div className="tcadmin-banned-icon"><LockKeyhole size={25} /></div><p className="tcadmin-kicker">THEEGGET CREATIONS / ACCOUNT STATUS</p><h1>Access restricted</h1><p className="tcadmin-subtitle">This TC account has been banned from TCAdmin. Access to the administration workspace is disabled.</p><div className="tcadmin-ban-details"><div><span>Account</span><strong>{user.username}</strong></div><div><span>TC account ID</span><strong>#{user.id}</strong></div><div><span>Status</span><strong className="tcadmin-ban-status">Banned</strong></div></div><p className="tcadmin-ban-help">If you believe this action was made in error, contact TC Support and include your account ID.</p><a className="tcadmin-ban-contact" href="mailto:support@theegget.com">Contact TC Support</a><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></div></main> :
     user.role === "user" ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><ShieldCheck size={24} /></div><h1>Access not granted</h1><p className="tcadmin-subtitle">Signed in as <strong>{user.username}</strong> (TC account #{user.id}). Your TC account has the default User role, which does not grant access to the admin workspace.</p><button className="tcadmin-secondary" onClick={signOut}><LogOut size={16} /> Sign out</button></main> :
     <main className="tcadmin-dashboard">
-      <div className="tcadmin-page-heading"><div><p className="tcadmin-kicker">THEEGGET CREATIONS / ADMIN</p><h1>TC administration</h1><p>Manage registered applications and access to TCAdmin.</p></div><span className="tcadmin-role-chip">{ROLES.find(r => r.value === user.role)?.label || user.role}</span></div>
+      <div className="tcadmin-page-heading"><div><p className="tcadmin-kicker">THEEGGET CREATIONS / ADMIN</p><h1>TC administration</h1><p>Manage registered applications and access to TCAdmin.</p></div><span className="tcadmin-role-chip">{ROLES.find(r => r.value === displayRole)?.label || displayRole}</span></div>
       {error && <div className="tcadmin-error"><AlertCircle size={17} />{error}</div>}
       {notice && <div className="tcadmin-notice">{notice}</div>}
 
@@ -550,16 +553,17 @@ export default function App() {
           { id: "home", label: "Overview", icon: <ShieldCheck size={16} /> },
           { id: "users", label: "Users", icon: <Users size={16} /> },
           { id: "support", label: "Support", icon: <Mail size={16} /> },
-          ...(CAN_MANAGE_SUBACCOUNTS(user.role) ? [{ id: "verification", label: "Verification", icon: <BadgeCheck size={16} /> }] : []),
-          ...(CAN_MANAGE_CLIENTS(user.role) ? [{ id: "apps", label: "Apps", icon: <KeyRound size={16} /> }] : [])
+          ...(CAN_MANAGE_SUBACCOUNTS(displayRole) ? [{ id: "verification", label: "Verification", icon: <BadgeCheck size={16} /> }] : []),
+          ...(CAN_MANAGE_CLIENTS(displayRole) ? [{ id: "apps", label: "Apps", icon: <KeyRound size={16} /> }] : []),
+          { id: "settings", label: "Settings", icon: <Settings size={16} /> }
         ].map(item => <button key={item.id} className={activeSection === item.id ? "tcadmin-nav-button active" : "tcadmin-nav-button"} onClick={() => setActiveSection(item.id)}>{item.icon}{item.label}</button>)}
       </nav>
 
       {activeSection === "home" && <section className="tcadmin-section-grid">
         <button className="tcadmin-section-card" onClick={() => setActiveSection("users")}><Users size={21} /><strong>Users</strong><span>Manage TC accounts, roles, and permissions.</span><b>Open Users →</b></button>
-        {CAN_MANAGE_SUBACCOUNTS(user.role) && <button className="tcadmin-section-card" onClick={() => setActiveSection("verification")}><BadgeCheck size={21} /><strong>Verification requests</strong><span>Review account, business, and group verification applications.</span><b>Review requests →</b></button>}
+        {CAN_MANAGE_SUBACCOUNTS(displayRole) && <button className="tcadmin-section-card" onClick={() => setActiveSection("verification")}><BadgeCheck size={21} /><strong>Verification requests</strong><span>Review account, business, and group verification applications.</span><b>Review requests →</b></button>}
         <button className="tcadmin-section-card" onClick={() => setActiveSection("support")}><Mail size={21} /><strong>Support</strong><span>Open the employee support mailbox workspace.</span><b>Open Support →</b></button>
-        {CAN_MANAGE_CLIENTS(user.role) && <button className="tcadmin-section-card" onClick={() => setActiveSection("apps")}><KeyRound size={21} /><strong>Apps</strong><span>Manage OAuth registrations and application settings.</span><b>Open Apps →</b></button>}
+        {CAN_MANAGE_CLIENTS(displayRole) && <button className="tcadmin-section-card" onClick={() => setActiveSection("apps")}><KeyRound size={21} /><strong>Apps</strong><span>Manage OAuth registrations and application settings.</span><b>Open Apps →</b></button>}
       </section>}
 
       
@@ -567,10 +571,10 @@ export default function App() {
         <div className="tcadmin-panel-title"><div><BadgeCheck size={19} /><div><h2>Verification requests</h2><p>Review proof submitted by TC Social accounts.</p></div></div><button className="tcadmin-refresh" onClick={loadVerificationRequests} disabled={verificationBusy}><RefreshCw size={14} /> Refresh</button></div>
         {verificationRequests.length ? <div className="tcadmin-verification-list">{verificationRequests.map(item => <article className="tcadmin-verification-request" key={item.id}>
           <div className="tcadmin-verification-request-heading"><div><strong>@{item.username}</strong><span>{item.verification_type} verification · Request #{item.id}</span></div><span className="tcadmin-role-chip">{item.status}</span></div>
-          <p>{item.explanation}</p><div className="tcadmin-verification-request-actions"><button className="tcadmin-secondary" onClick={() => openVerificationProof(item.id)}><FileCheck2 size={14} /> View proof · {item.file_name}</button>{["admin","co_owner","owner"].includes(user.role) && item.status === "pending" && <><button className="tcadmin-save" disabled={verificationBusy} onClick={() => reviewVerificationRequest(item.id,"approved")}>Approve</button><button className="tcadmin-danger" disabled={verificationBusy} onClick={() => reviewVerificationRequest(item.id,"rejected")}>Reject</button></>}</div>
+          <p>{item.explanation}</p><div className="tcadmin-verification-request-actions"><button className="tcadmin-secondary" onClick={() => openVerificationProof(item.id)}><FileCheck2 size={14} /> View proof · {item.file_name}</button>{["admin","co_owner","owner"].includes(displayRole) && item.status === "pending" && <><button className="tcadmin-save" disabled={verificationBusy} onClick={() => reviewVerificationRequest(item.id,"approved")}>Approve</button><button className="tcadmin-danger" disabled={verificationBusy} onClick={() => reviewVerificationRequest(item.id,"rejected")}>Reject</button></>}</div>
           <small>Submitted {new Date(item.created_at).toLocaleString()}</small>
         </article>)}</div> : <div className="tcadmin-muted">{verificationBusy ? "Loading requests…" : "No pending verification requests."}</div>}
-        {["support"].includes(user.role) && <div className="tcadmin-support-note"><LockKeyhole size={15} /> Support can inspect submitted proof. Admin, co-owner, and owner roles can approve or reject requests.</div>}
+        {["support"].includes(displayRole) && <div className="tcadmin-support-note"><LockKeyhole size={15} /> Support can inspect submitted proof. Admin, co-owner, and owner roles can approve or reject requests.</div>}
       </section>}
 
       {activeSection === "support" && <section className="tcadmin-panel tcadmin-support-workspace">
@@ -604,7 +608,7 @@ export default function App() {
         <div className="tcadmin-support-note"><ShieldCheck size={15} /> Replies are sent only to the sender of the selected incoming message. Arbitrary direct emails and announcements remain unavailable to Support staff. Mailbox credentials remain in this browser session's memory and are not saved to browser storage.</div>
       </section>}
 
-      {activeSection === "apps" && CAN_SEND_MAIL(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
+      {activeSection === "apps" && CAN_SEND_MAIL(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Email center</h2><p>Send a private email to one recipient or a universal announcement to active TC accounts.</p></div></div></div>
         <form onSubmit={sendMail} style={{ padding: 20, display: "grid", gap: 14 }}>
           <div style={{ color: "#85858d", fontSize: 11 }}>From <strong style={{ color: "#e4e4e7" }}>notify@theegget.com</strong></div>
@@ -626,7 +630,7 @@ export default function App() {
         </form>
       </section>}
 
-      {activeSection === "apps" && CAN_MANAGE_CLIENTS(user.role) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
+      {activeSection === "apps" && CAN_MANAGE_CLIENTS(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><KeyRound size={19} /><div><h2>Application OAuth registrations</h2><p>View and manage registered client IDs across TC apps. Admin role or higher is required.</p></div></div><button className="tcadmin-refresh" onClick={loadClients} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #29292d", background: "#141416" }}>
           <div style={{ color: "#777780", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>TCAdmin sign-in client ID</div>
@@ -677,10 +681,10 @@ export default function App() {
         <p className="tcadmin-muted" style={{ margin: 0 }}>Creating new registrations remains on <a href="https://dev.theegget.com" target="_blank" rel="noreferrer" style={{ color: "#d5d5dc" }}>dev.theegget.com</a>. TCAdmin manages existing registrations here.</p>
       </section>}
 
-      {activeSection === "users" && (CAN_MANAGE_SUBACCOUNTS(user.role) ? <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Users size={19} /><div><h2>TC accounts</h2><p>{user.role === "owner" ? "Only TC account ID 1 can change roles. Support and higher roles can manage sub-accounts." : "Support and higher roles can manage sub-account relationships after ownership verification."}</p></div></div><button className="tcadmin-refresh" onClick={loadAccounts} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
-        {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Email</th><th>Current role</th>{user.role === "owner" && <><th>Assign role</th><th /></>}</tr></thead><tbody>{accounts.map(account => <tr key={account.id} onClick={() => { setSelectedAccount(account); loadSubAccounts(account.id); }} style={{ cursor: "pointer" }} title={"Open management profile for " + account.username}><td><div className={`tcadmin-account-identity`}><span className={`tcadmin-presence-ring ${account.is_online ? "is-online" : "is-offline"}`}>{account.username.slice(0,1).toUpperCase()}</span><span><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? " · " + account.status : ""}</span></span></div></td><td>{account.email || "Not provided"}</td><td><span className="tcadmin-role-chip">{account.id === 1 ? "5 · Owner" : ROLES.find(r => r.value === account.role)?.label || "1 · User"}</span></td>{user.role === "owner" && <><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select onClick={e => e.stopPropagation()} value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={e => { e.stopPropagation(); saveRole(account); }}>Save</button>}</td></>}</tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
-      </section> : !CAN_MANAGE_CLIENTS(user.role) ? <section className="tcadmin-panel tcadmin-no-role-tools"><UserCog size={24} /><h2>Administrative tools</h2><p>Your role allows access to the TCAdmin workspace, but only TC account ID 1 can assign or change roles.</p></section> : null)}
-      {activeSection === "users" && selectedAccount && CAN_MANAGE_SUBACCOUNTS(user.role) && <div onClick={() => setSelectedAccount(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", justifyContent: "flex-end" }}>
+      {activeSection === "users" && (CAN_MANAGE_SUBACCOUNTS(displayRole) ? <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Users size={19} /><div><h2>TC accounts</h2><p>{displayRole === "owner" ? "Only TC account ID 1 can change roles. Support and higher roles can manage sub-accounts." : "Support and higher roles can manage sub-account relationships after ownership verification."}</p></div></div><button className="tcadmin-refresh" onClick={loadAccounts} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
+        {busy && !accounts.length ? <p className="tcadmin-muted">Loading accounts…</p> : accounts.length ? <div className="tcadmin-table-wrap"><table className="tcadmin-table"><thead><tr><th>TC account</th><th>Email</th><th>Current role</th>{displayRole === "owner" && <><th>Assign role</th><th /></>}</tr></thead><tbody>{accounts.map(account => <tr key={account.id} onClick={() => { setSelectedAccount(account); loadSubAccounts(account.id); }} style={{ cursor: "pointer" }} title={"Open management profile for " + account.username}><td><div className={`tcadmin-account-identity`}><span className={`tcadmin-presence-ring ${account.is_online ? "is-online" : "is-offline"}`}>{account.username.slice(0,1).toUpperCase()}</span><span><strong>{account.username}</strong><span className="tcadmin-cell-sub">Account ID {account.id}{account.status ? " · " + account.status : ""}</span></span></div></td><td>{account.email || "Not provided"}</td><td><span className="tcadmin-role-chip">{account.id === 1 ? "5 · Owner" : ROLES.find(r => r.value === account.role)?.label || "1 · User"}</span></td>{displayRole === "owner" && <><td>{account.id === 1 ? <span className="tcadmin-muted">Permanent owner</span> : <select onClick={e => e.stopPropagation()} value={roleChanges[account.id] ?? account.role} onChange={e => setRoleChanges(v => ({ ...v, [account.id]: e.target.value }))}>{ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select>}</td><td>{account.id === 1 ? null : <button className="tcadmin-save" disabled={busy || (roleChanges[account.id] ?? account.role) === account.role} onClick={e => { e.stopPropagation(); saveRole(account); }}>Save</button>}</td></>}</tr>)}</tbody></table></div> : <p className="tcadmin-muted">No TC accounts were returned.</p>}
+      </section> : !CAN_MANAGE_CLIENTS(displayRole) ? <section className="tcadmin-panel tcadmin-no-role-tools"><UserCog size={24} /><h2>Administrative tools</h2><p>Your role allows access to the TCAdmin workspace, but only TC account ID 1 can assign or change roles.</p></section> : null)}
+      {activeSection === "users" && selectedAccount && CAN_MANAGE_SUBACCOUNTS(displayRole) && <div onClick={() => setSelectedAccount(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.72)", display: "flex", justifyContent: "flex-end" }}>
         <section onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Management panel for ${selectedAccount.username}`} style={{ width: "min(620px, 100%)", height: "100%", overflowY: "auto", background: "#111113", borderLeft: "1px solid #303035", padding: "24px", boxSizing: "border-box", boxShadow: "-20px 0 60px rgba(0,0,0,.35)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 28 }}>
             <div><p className="tcadmin-kicker">ACCOUNT MANAGEMENT</p><h2 style={{ margin: "8px 0 5px", fontSize: 25 }}>{selectedAccount.username}</h2><p style={{ color: "#85858d", margin: 0, fontSize: 12 }}>TC account #{selectedAccount.id}</p></div>
@@ -690,7 +694,7 @@ export default function App() {
             <div style={{ background: "#19191c", border: "1px solid #303035", borderRadius: 9, padding: 15 }}><div style={{ color: "#85858d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Account ID</div><strong style={{ display: "block", marginTop: 8, fontSize: 18 }}>#{selectedAccount.id}</strong></div>
             <div style={{ background: "#19191c", border: "1px solid #303035", borderRadius: 9, padding: 15 }}><div style={{ color: "#85858d", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Account status</div><strong style={{ display: "block", marginTop: 8, fontSize: 18, textTransform: "capitalize" }}>{selectedAccount.status || "Unknown"}</strong></div>
           </div>
-          {user.role === "owner" && <section style={{ border: "1px solid #303035", borderRadius: 10, padding: 18, marginBottom: 16 }}>
+          {displayRole === "owner" && <section style={{ border: "1px solid #303035", borderRadius: 10, padding: 18, marginBottom: 16 }}>
             <h3 style={{ margin: "0 0 5px", fontSize: 15 }}>Access and permissions</h3>
             <p style={{ color: "#85858d", fontSize: 12, margin: "0 0 16px" }}>Change the role assigned to this TC account.</p>
             {selectedAccount.id === 1 ? <div className="tcadmin-role-chip">5 · Owner · Permanent owner account</div> : <>
