@@ -1,4 +1,6 @@
 import { onRequestGet as health } from "../functions/api/health.js";
+import { onRequestGet as publicOfficialApps } from "../functions/api/public/official-apps.js";
+import { onRequestGet as listOfficialApps, onRequestPost as saveOfficialApp, onRequestDelete as deleteOfficialApp } from "../functions/api/admin/official-apps.js";
 import { onRequestPost as exchangeToken } from "../functions/api/auth/token.js";
 import { onRequestGet as currentUser } from "../functions/api/auth/me.js";
 import { onRequestPost as heartbeat } from "../functions/api/presence/heartbeat.js";
@@ -9,6 +11,10 @@ import { onRequestGet as listVerificationRequests, onRequestPatch as reviewVerif
 
 const routes = new Map([
   ["GET /api/health", health],
+  ["GET /api/public/apps", publicOfficialApps],
+  ["GET /api/admin/official-apps", listOfficialApps],
+  ["POST /api/admin/official-apps", saveOfficialApp],
+  ["DELETE /api/admin/official-apps", deleteOfficialApp],
   ["POST /api/auth/token", exchangeToken],
   ["GET /api/auth/me", currentUser],
   ["POST /api/presence/heartbeat", heartbeat],
