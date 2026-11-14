@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings, AppWindow } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings, AppWindow, UserRound, ChevronDown } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -86,6 +86,7 @@ export default function App() {
   const [mailSending, setMailSending] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [previewRole, setPreviewRole] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [subAccounts, setSubAccounts] = useState([]);
   const [subAccountId, setSubAccountId] = useState("");
   const [subAccountVerified, setSubAccountVerified] = useState(false);
@@ -600,7 +601,7 @@ export default function App() {
   return <div className="tcadmin-root">
     <header className="tcadmin-header">
       <div className="tcadmin-brand"><div className="tcadmin-mark">TC</div><div><strong>Theegget Creations</strong><span>ADMINISTRATION</span></div></div>
-      {user && <div className="tcadmin-session"><span className="tcadmin-status-dot" />Signed in as <strong>{user.username}</strong><button className="tcadmin-signout" onClick={signOut}><LogOut size={15} /> Sign out</button></div>}
+      {user && <div className="tcadmin-profile-menu"><button className="tcadmin-profile-trigger" aria-label="Open account menu" aria-expanded={profileMenuOpen} onClick={() => setProfileMenuOpen(value => !value)}><UserRound size={19} /><ChevronDown size={14} /></button>{profileMenuOpen && <><button className="tcadmin-menu-backdrop" aria-label="Close account menu" onClick={() => setProfileMenuOpen(false)} /><div className="tcadmin-profile-dropdown"><div className="tcadmin-profile-identity"><strong>{user.username}</strong><span>TC Account · #{user.id}</span></div><a href={ACCOUNTS} className="tcadmin-profile-option" onClick={() => setProfileMenuOpen(false)}><UserCog size={16} /> Go to TC Accounts</a><button className="tcadmin-profile-option" onClick={() => { setProfileMenuOpen(false); signOut(); }}><LogOut size={16} /> Sign out</button></div></>}</div>}
     </header>
     {loading ? <main className="tcadmin-centered"><div className="tcadmin-spinner" /><h1>Checking TC Accounts</h1><p>Verifying your sign-in and access level.</p></main> :
     !user ? <main className="tcadmin-centered"><div className="tcadmin-hero-icon"><LockKeyhole size={24} /></div><p className="tcadmin-kicker">SECURE ADMINISTRATION</p><h1>Sign in with TC</h1><p className="tcadmin-subtitle">Use your TC Account to continue. Access to this admin panel is granted separately from a normal TC sign-in.</p>
