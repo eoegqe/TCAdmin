@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2 } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -96,6 +96,8 @@ export default function App() {
   const [supportInboxBusy, setSupportInboxBusy] = useState(false);
   const [supportReplyBusy, setSupportReplyBusy] = useState(false);
   const [supportSearch, setSupportSearch] = useState("");
+  const [verificationRequests, setVerificationRequests] = useState([]);
+  const [verificationBusy, setVerificationBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -302,6 +304,67 @@ export default function App() {
   }
 
 
+  async function loadVerificationRequests() {
+    if (!token || !CAN_MANAGE_SUBACCOUNTS(user?.role)) return;
+    setVerificationBusy(true);
+    try {
+      const result = await api("/api/admin/verification-requests", token);
+      setVerificationRequests(result.requests || []);
+      setError("");
+    } catch (e) {
+      setError(e.message || "Could not load verification requests.");
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
+
+  async function reviewVerificationRequest(id, status) {
+    if (!["approved", "rejected"].includes(status)) return;
+    setVerificationBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api("/api/admin/verification-requests", token, {
+        method: "PATCH",
+        body: JSON.stringify({ id, status })
+      });
+      setNotice(status === "approved" ? "Verification approved." : "Verification request rejected.");
+      await loadVerificationRequests();
+    } catch (e) {
+      setError(e.message || "Could not review this request.");
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
+
+  async function openVerificationProof(id) {
+    try {
+      const response = await fetch("/api/admin/verification-requests?id=" + encodeURIComponent(id) + "&proof=1", {
+        headers: { Authorization: "Bearer " + token }
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || result.error || "Could not open proof.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const opened = window.open(url, "_blank", "noopener");
+      if (!opened) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "verification-proof";
+        link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      setError(e.message || "Could not open proof.");
+    }
+  }
+
+  useEffect(() => {
+    if (activeSection === "verification" && token && CAN_MANAGE_SUBACCOUNTS(user?.role)) loadVerificationRequests();
+  }, [activeSection, token, user?.role]);
+
   async function loadSubAccounts(accountId) {
     if (!token || !accountId || !CAN_MANAGE_SUBACCOUNTS(user?.role)) return;
     try {
@@ -487,17 +550,29 @@ export default function App() {
           { id: "home", label: "Overview", icon: <ShieldCheck size={16} /> },
           { id: "users", label: "Users", icon: <Users size={16} /> },
           { id: "support", label: "Support", icon: <Mail size={16} /> },
+          ...(CAN_MANAGE_SUBACCOUNTS(user.role) ? [{ id: "verification", label: "Verification", icon: <BadgeCheck size={16} /> }] : []),
           ...(CAN_MANAGE_CLIENTS(user.role) ? [{ id: "apps", label: "Apps", icon: <KeyRound size={16} /> }] : [])
         ].map(item => <button key={item.id} className={activeSection === item.id ? "tcadmin-nav-button active" : "tcadmin-nav-button"} onClick={() => setActiveSection(item.id)}>{item.icon}{item.label}</button>)}
       </nav>
 
       {activeSection === "home" && <section className="tcadmin-section-grid">
         <button className="tcadmin-section-card" onClick={() => setActiveSection("users")}><Users size={21} /><strong>Users</strong><span>Manage TC accounts, roles, and permissions.</span><b>Open Users →</b></button>
+        {CAN_MANAGE_SUBACCOUNTS(user.role) && <button className="tcadmin-section-card" onClick={() => setActiveSection("verification")}><BadgeCheck size={21} /><strong>Verification requests</strong><span>Review account, business, and group verification applications.</span><b>Review requests →</b></button>}
         <button className="tcadmin-section-card" onClick={() => setActiveSection("support")}><Mail size={21} /><strong>Support</strong><span>Open the employee support mailbox workspace.</span><b>Open Support →</b></button>
         {CAN_MANAGE_CLIENTS(user.role) && <button className="tcadmin-section-card" onClick={() => setActiveSection("apps")}><KeyRound size={21} /><strong>Apps</strong><span>Manage OAuth registrations and application settings.</span><b>Open Apps →</b></button>}
       </section>}
 
       
+      {activeSection === "verification" && <section className="tcadmin-panel">
+        <div className="tcadmin-panel-title"><div><BadgeCheck size={19} /><div><h2>Verification requests</h2><p>Review proof submitted by TC Social accounts.</p></div></div><button className="tcadmin-refresh" onClick={loadVerificationRequests} disabled={verificationBusy}><RefreshCw size={14} /> Refresh</button></div>
+        {verificationRequests.length ? <div className="tcadmin-verification-list">{verificationRequests.map(item => <article className="tcadmin-verification-request" key={item.id}>
+          <div className="tcadmin-verification-request-heading"><div><strong>@{item.username}</strong><span>{item.verification_type} verification · Request #{item.id}</span></div><span className="tcadmin-role-chip">{item.status}</span></div>
+          <p>{item.explanation}</p><div className="tcadmin-verification-request-actions"><button className="tcadmin-secondary" onClick={() => openVerificationProof(item.id)}><FileCheck2 size={14} /> View proof · {item.file_name}</button>{["admin","co_owner","owner"].includes(user.role) && item.status === "pending" && <><button className="tcadmin-save" disabled={verificationBusy} onClick={() => reviewVerificationRequest(item.id,"approved")}>Approve</button><button className="tcadmin-danger" disabled={verificationBusy} onClick={() => reviewVerificationRequest(item.id,"rejected")}>Reject</button></>}</div>
+          <small>Submitted {new Date(item.created_at).toLocaleString()}</small>
+        </article>)}</div> : <div className="tcadmin-muted">{verificationBusy ? "Loading requests…" : "No pending verification requests."}</div>}
+        {["support"].includes(user.role) && <div className="tcadmin-support-note"><LockKeyhole size={15} /> Support can inspect submitted proof. Admin, co-owner, and owner roles can approve or reject requests.</div>}
+      </section>}
+
       {activeSection === "support" && <section className="tcadmin-panel tcadmin-support-workspace">
         <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Read customer conversations and reply from your employee mailbox.</p></div></div>{supportMailboxUser ? <div className="tcadmin-mailbox-session"><span className="tcadmin-role-chip">{supportMailboxUser}</span><button className="tcadmin-refresh" onClick={() => loadSupportInbox()} disabled={supportInboxBusy}><RefreshCw size={14} /> Refresh</button><button className="tcadmin-refresh" onClick={signOutSupportMailbox}>Sign out</button></div> : <button className="tcadmin-save" onClick={() => setSupportLoginOpen(value => !value)}><LockKeyhole size={14} style={{ verticalAlign: "middle", marginRight: 5 }} />Log in</button>}</div>
         {supportLoginOpen && !supportMailboxUser && <form className="tcadmin-mailbox-login" onSubmit={loginSupportMailbox}>
