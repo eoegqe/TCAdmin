@@ -33,7 +33,7 @@ async function authorize(request, env, minimumRole = ROLE_LEVEL.support) {
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const wantsProof = url.searchParams.get("proof") === "1";
-  const auth = await authorize(request, env, ROLE_LEVEL.support);
+  const auth = await authorize(request, env, ROLE_LEVEL.admin);
   if (auth.response) return auth.response;
   try {
     if (wantsProof) {
