@@ -13,6 +13,7 @@ const ROLES = [
   { value: "banned", label: "0 · Banned" }
 ];
 const CAN_MANAGE_CLIENTS = role => ["admin", "co_owner", "owner"].includes(role);
+const CAN_MANAGE_OFFICIAL_APPS = role => ["co_owner", "owner"].includes(role);
 const CAN_SEND_MAIL = role => ["admin", "co_owner", "owner"].includes(role);
 const CAN_MANAGE_SUBACCOUNTS = role => ["support", "admin", "co_owner", "owner"].includes(role);
 
@@ -154,9 +155,16 @@ export default function App() {
     }
     let cancelled = false;
     setLoading(true);
-    api("/api/auth/me", token).then(result => {
+    api("/api/auth/me", token).then(async result => {
       if (cancelled) return;
       setUser(result.user);
+      if (Number(result.user?.id) === 1) {
+        try {
+          const response = await fetch(`${ACCOUNTS}/api/tcadmin/role-preview`, { headers: { Authorization: `Bearer ${token}` } });
+          const preview = await response.json().catch(() => ({}));
+          if (response.ok && !cancelled) setPreviewRole(preview.preview_role || "");
+        } catch {}
+      }
       setError("");
     }).catch(e => {
       if (cancelled) return;
@@ -618,8 +626,8 @@ export default function App() {
         ].map(item => <button key={item.id} className={activeSection === item.id ? "tcadmin-nav-button active" : "tcadmin-nav-button"} onClick={() => setActiveSection(item.id)}>{item.icon}{item.label}</button>)}
       </nav>
 
-      {user.id === 1 && previewRole && <div className="tcadmin-notice">Acting as {ROLES.find(r => r.value === displayRole)?.label || displayRole}. This is a UI preview only; server permissions remain Owner.</div>}
-      {activeSection === "settings" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Settings size={19} /><div><h2>Settings</h2><p>Manage your TCAdmin workspace preferences.</p></div></div></div>{user.id === 1 ? <div style={{ maxWidth: 520, display: "grid", gap: 10 }}><label style={{ color: "#a1a1aa", fontSize: 12 }}>Act as role<select value={previewRole} onChange={e => setPreviewRole(e.target.value)} style={{ display: "block", width: "100%", marginTop: 8, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 12 }}><option value="">5 · Owner (actual role)</option>{ROLES.filter(role => role.value !== "owner").map(role => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label><p className="tcadmin-muted">Preview how TCAdmin appears to another role. This only changes the interface; it does not change your account role or grant/revoke server permissions.</p></div> : <p className="tcadmin-muted">No additional settings are available for your account.</p>}</section>}
+      {user.id === 1 && previewRole && <div className="tcadmin-notice">Acting as {ROLES.find(r => r.value === previewRole)?.label || previewRole}. This is a UI preview only; server permissions remain Owner.</div>}
+      {activeSection === "settings" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Settings size={19} /><div><h2>Settings</h2><p>Manage your TCAdmin workspace preferences.</p></div></div></div><p className="tcadmin-muted">TC Admin display preferences are managed in TC Accounts.</p></section>}
 
       {activeSection === "home" && <section className="tcadmin-section-grid">
         <button className="tcadmin-section-card" onClick={() => setActiveSection("users")}><Users size={21} /><strong>Users</strong><span>Manage TC accounts, roles, and permissions.</span><b>Open Users →</b></button>
@@ -673,7 +681,7 @@ export default function App() {
 
       {activeSection === "apps" && CAN_MANAGE_CLIENTS(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><AppWindow size={19} /><div><h2>Official apps</h2><p>Control which apps appear in the Apps section of Theegget Creations' homepage.</p></div></div><button className="tcadmin-refresh" onClick={loadOfficialApps} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
-        <form onSubmit={event => { event.preventDefault(); saveOfficialApp(null); }} style={{ padding: 20, display: "grid", gap: 13, borderBottom: "1px solid #29292d" }}>
+        {CAN_MANAGE_OFFICIAL_APPS(user.role) && <><form onSubmit={event => { event.preventDefault(); saveOfficialApp(null); }} style={{ padding: 20, display: "grid", gap: 13, borderBottom: "1px solid #29292d" }}>
           <strong style={{ fontSize: 13 }}>Add an official app</strong>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
             <label style={{ color: "#a1a1aa", fontSize: 11 }}>App name<input required minLength={2} maxLength={70} value={newOfficialApp.name} onChange={e => setNewOfficialApp(v => ({ ...v, name: e.target.value }))} placeholder="App name" style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
@@ -684,7 +692,7 @@ export default function App() {
           </div>
           <label style={{ color: "#a1a1aa", fontSize: 11 }}>Description<textarea maxLength={240} rows={2} value={newOfficialApp.description} onChange={e => setNewOfficialApp(v => ({ ...v, description: e.target.value }))} placeholder="Briefly describe this app." style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
           <div><button className="tcadmin-save" type="submit" disabled={busy || !newOfficialApp.name.trim() || !newOfficialApp.url.trim()}><AppWindow size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />Add to homepage</button></div>
-        </form>
+        </form> }
         {busy && !officialApps.length ? <p className="tcadmin-muted">Loading official apps…</p> : officialApps.length ? <div style={{ display: "grid", gap: 0 }}>
           {officialApps.map(app => {
             const draft = officialAppChanges[app.id] || app;
@@ -705,7 +713,8 @@ export default function App() {
             </article>;
           })}
         </div> : <p className="tcadmin-muted" style={{ padding: 20 }}>No official apps are listed on the homepage.</p>}
-        <p className="tcadmin-muted" style={{ margin: 0, padding: "0 20px 18px" }}>Changes update the homepage directory after the official apps API and database migration are deployed. Admin role or higher is required.</p>
+        <p className="tcadmin-muted" style={{ margin: 0, padding: "0 20px 18px" }}>Only Co-Owners and the Owner can add, edit, or remove homepage listings.</p></>}
+        {!CAN_MANAGE_OFFICIAL_APPS(user.role) && <div style={{ padding: 20 }}><p className="tcadmin-muted">You can view the official app directory, but only Co-Owners and the Owner can manage listings.</p>{officialApps.map(app => <div key={app.id} style={{ padding: "10px 0", borderBottom: "1px solid #252529" }}><strong>{app.name}</strong><div className="tcadmin-muted">{app.category} · {app.description}</div><a href={app.url} target="_blank" rel="noreferrer">Open app ↗</a></div>)}</div>}
       </section>}
 
       {activeSection === "apps" && CAN_SEND_MAIL(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
