@@ -5,7 +5,7 @@ function json(data, status = 200) {
 }
 
 async function authorize(request, env) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return { response: json({ error: "not_authenticated" }, 401) };
   let identity;
   try {
