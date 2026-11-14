@@ -692,7 +692,7 @@ export default function App() {
           </div>
           <label style={{ color: "#a1a1aa", fontSize: 11 }}>Description<textarea maxLength={240} rows={2} value={newOfficialApp.description} onChange={e => setNewOfficialApp(v => ({ ...v, description: e.target.value }))} placeholder="Briefly describe this app." style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 6, resize: "vertical", background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: 10 }} /></label>
           <div><button className="tcadmin-save" type="submit" disabled={busy || !newOfficialApp.name.trim() || !newOfficialApp.url.trim()}><AppWindow size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />Add to homepage</button></div>
-        </form>}
+        </form>
         {busy && !officialApps.length ? <p className="tcadmin-muted">Loading official apps…</p> : officialApps.length ? <div style={{ display: "grid", gap: 0 }}>
           {officialApps.map(app => {
             const draft = officialAppChanges[app.id] || app;
@@ -715,7 +715,6 @@ export default function App() {
         </div> : <p className="tcadmin-muted" style={{ padding: 20 }}>No official apps are listed on the homepage.</p>}
         <p className="tcadmin-muted" style={{ margin: 0, padding: "0 20px 18px" }}>Only Co-Owners and the Owner can add, edit, or remove homepage listings.</p></>}
         {!CAN_MANAGE_OFFICIAL_APPS(user.role) && <p className="tcadmin-muted" style={{ padding: "0 20px 18px" }}>Read-only access. Only Co-Owners and the Owner can manage these listings.</p> }
-        {!CAN_MANAGE_OFFICIAL_APPS(user.role) && <div style={{ padding: 20 }}><p className="tcadmin-muted">You can view the official app directory, but only Co-Owners and the Owner can manage listings.</p>{officialApps.map(app => <div key={app.id} style={{ padding: "10px 0", borderBottom: "1px solid #252529" }}><strong>{app.name}</strong><div className="tcadmin-muted">{app.category} · {app.description}</div><a href={app.url} target="_blank" rel="noreferrer">Open app ↗</a></div>)}</div>}
       </section>}
 
       {activeSection === "apps" && CAN_SEND_MAIL(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
