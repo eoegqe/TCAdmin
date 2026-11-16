@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings, AppWindow, UserRound, ChevronDown } from "lucide-react";
+import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCog, KeyRound, Copy, Trash2, Save, ExternalLink, X, Mail, Paperclip, Send, Download, BadgeCheck, FileCheck2, Settings, AppWindow, UserRound, ChevronDown, Power } from "lucide-react";
 
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
@@ -85,6 +85,9 @@ export default function App() {
   const [mailMessage, setMailMessage] = useState("");
   const [mailSending, setMailSending] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [previewRole, setPreviewRole] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [subAccounts, setSubAccounts] = useState([]);
@@ -598,6 +601,38 @@ export default function App() {
 
   const displayRole = user?.id === 1 && previewRole ? previewRole : user?.role;
 
+  useEffect(() => {
+    if (activeSection !== "maintenance" || !token || user?.role !== "owner") return;
+    let cancelled = false;
+    setMaintenanceLoading(true);
+    api("/api/admin/maintenance", token).then(result => {
+      if (!cancelled) setMaintenanceEnabled(Number(result.maintenance) === 1);
+    }).catch(e => {
+      if (!cancelled) setError(e.message || "Could not load server maintenance status.");
+    }).finally(() => { if (!cancelled) setMaintenanceLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeSection, token, user?.role]);
+
+  async function toggleMaintenance() {
+    if (user?.role !== "owner" || maintenanceSaving) return;
+    setMaintenanceSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const next = maintenanceEnabled ? 0 : 1;
+      const result = await api("/api/admin/maintenance", token, {
+        method: "POST",
+        body: JSON.stringify({ maintenance: next })
+      });
+      setMaintenanceEnabled(Number(result.maintenance) === 1);
+      setNotice(next ? "Server-wide maintenance enabled." : "Server-wide maintenance disabled.");
+    } catch (e) {
+      setError(e.message || "Could not update server maintenance.");
+    } finally {
+      setMaintenanceSaving(false);
+    }
+  }
+
   return <div className="tcadmin-root">
     <header className="tcadmin-header">
       <div className="tcadmin-brand"><div className="tcadmin-mark">TC</div><div><strong>Theegget Creations</strong><span>ADMINISTRATION</span></div></div>
@@ -623,11 +658,14 @@ export default function App() {
           { id: "support", label: "Support", icon: <Mail size={16} /> },
           ...(CAN_MANAGE_SUBACCOUNTS(displayRole) ? [{ id: "verification", label: "Verification", icon: <BadgeCheck size={16} /> }] : []),
           ...(CAN_MANAGE_CLIENTS(displayRole) ? [{ id: "apps", label: "Apps", icon: <KeyRound size={16} /> }] : []),
+          ...(user?.role === "owner" ? [{ id: "maintenance", label: "Maintenance", icon: <Power size={16} /> }] : []),
           { id: "settings", label: "Settings", icon: <Settings size={16} /> }
         ].map(item => <button key={item.id} className={activeSection === item.id ? "tcadmin-nav-button active" : "tcadmin-nav-button"} onClick={() => setActiveSection(item.id)}>{item.icon}{item.label}</button>)}
       </nav>
 
       {user.id === 1 && previewRole && <div className="tcadmin-notice">Acting as {ROLES.find(r => r.value === previewRole)?.label || previewRole}. This is a UI preview only; server permissions remain Owner.</div>}
+      {activeSection === "maintenance" && user?.role === "owner" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Power size={19} /><div><h2>Server-wide maintenance</h2><p>Control the shared maintenance flag used by TC services.</p></div></div><button className="tcadmin-refresh" onClick={() => setActiveSection("home")}>Back to overview</button></div><div style={{ padding: 20 }}><div style={{ border: "1px solid #303035", borderRadius: 10, padding: 18, background: "#141416", marginBottom: 16 }}><div style={{ color: "#85858d", fontSize: 10, letterSpacing: 1, textTransform: "uppercase" }}>Current status</div><strong style={{ display: "block", marginTop: 8, fontSize: 20 }}>{maintenanceLoading ? "Checking…" : maintenanceEnabled ? "Maintenance enabled" : "Services operational"}</strong><p className="tcadmin-muted" style={{ marginBottom: 0 }}>{maintenanceEnabled ? "Public sites using the shared setting should display their maintenance page." : "The shared maintenance flag is disabled."}</p></div><button className={maintenanceEnabled ? "tcadmin-danger" : "tcadmin-save"} onClick={toggleMaintenance} disabled={maintenanceLoading || maintenanceSaving}>{maintenanceSaving ? "Saving…" : maintenanceEnabled ? "Disable server maintenance" : "Enable server maintenance"}</button><p className="tcadmin-muted">Only accounts whose assigned role is Owner can view or change this setting. The value is stored in the shared TC D1 database (0 = off, 1 = on).</p></div></section>}
+
       {activeSection === "settings" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Settings size={19} /><div><h2>Settings</h2><p>Manage your TCAdmin workspace preferences.</p></div></div></div><p className="tcadmin-muted">TC Admin display preferences are managed in TC Accounts.</p></section>}
 
       {activeSection === "home" && <section className="tcadmin-section-grid">
