@@ -1,5 +1,5 @@
 async function authorizeOwner(request, env) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return { response: Response.json({ error: "not_authenticated" }, { status: 401 }) };
 
   let identity;
