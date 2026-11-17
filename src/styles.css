@@ -118,3 +118,15 @@
 @media(max-width:640px){.tcadmin-verification-request-heading{align-items:flex-start;flex-direction:column}.tcadmin-verification-request-actions{align-items:stretch}.tcadmin-verification-request-actions button{justify-content:center}}
 
 .tcadmin-profile-menu{position:relative;z-index:30}.tcadmin-profile-trigger{width:40px;height:40px;display:flex;align-items:center;justify-content:center;gap:3px;border:1px solid #34343a;border-radius:50%;background:#19191c;color:#f2f2f4;cursor:pointer}.tcadmin-profile-trigger:hover{background:#242428;border-color:#55555d}.tcadmin-menu-backdrop{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default}.tcadmin-profile-dropdown{position:absolute;right:0;top:calc(100% + 10px);z-index:2;width:220px;padding:7px;border:1px solid #33333a;border-radius:12px;background:#151517;box-shadow:0 14px 40px #0009}.tcadmin-profile-identity{display:grid;gap:4px;padding:10px 11px 12px;border-bottom:1px solid #2b2b30;margin-bottom:5px}.tcadmin-profile-identity strong{font-size:13px;color:#f5f5f6}.tcadmin-profile-identity span{font-size:11px;color:#85858e}.tcadmin-profile-option{width:100%;display:flex;align-items:center;gap:10px;padding:10px 11px;border:0;border-radius:7px;background:transparent;color:#dedee3;text-decoration:none;text-align:left;font:inherit;font-size:12px;cursor:pointer}.tcadmin-profile-option:hover{background:#26262b;color:#fff}
+
+
+.tcadmin-workspace{display:grid;grid-template-columns:224px minmax(0,1fr);gap:22px;align-items:start;margin-top:26px}
+.tcadmin-sidebar{position:sticky;top:20px;min-width:0;padding:12px;border:1px solid #29292e;border-radius:13px;background:#101012}
+.tcadmin-sidebar-label{padding:8px 10px 12px;color:#777780;font-size:9px;font-weight:750;letter-spacing:1.5px}
+.tcadmin-sidebar .tcadmin-navigation{display:grid;gap:4px;margin:0;padding:0;border:0;background:transparent}
+.tcadmin-sidebar .tcadmin-nav-button{width:100%;justify-content:flex-start;padding:11px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#a5a5ad;text-align:left;font-size:12px}
+.tcadmin-sidebar .tcadmin-nav-button:hover{background:#1d1d20;color:#f5f5f6}
+.tcadmin-sidebar .tcadmin-nav-button.active{background:#252529;border-color:#38383e;color:#fff}
+.tcadmin-workspace-content{min-width:0}
+.tcadmin-workspace-content>.tcadmin-panel,.tcadmin-workspace-content>.tcadmin-section-grid{margin-bottom:20px}
+@media(max-width:760px){.tcadmin-workspace{grid-template-columns:1fr;gap:14px}.tcadmin-sidebar{position:static;padding:10px}.tcadmin-sidebar .tcadmin-navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.tcadmin-sidebar .tcadmin-nav-button{justify-content:flex-start;padding:10px 9px;font-size:11px}.tcadmin-sidebar-label{padding:5px 8px 9px}}
