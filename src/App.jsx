@@ -522,7 +522,7 @@ export default function App() {
     setError("");
     setNotice("");
     try {
-      const result = await supportMailboxRequest("/api/support/mailbox/reply", supportMailboxUser, supportPassword, { uid: selectedSupportMessage.uid, message: supportReply.trim() });
+      const result = await supportMailboxRequest("/api/support/mailbox/reply", supportMailboxUser, supportPassword, { uid: selectedSupportMessage.uid, message: supportReply.trim(), sender_name: user?.username || "TC Support" });
       setNotice(result.message || "Reply sent.");
       setSupportReply("");
       await loadSupportInbox();
