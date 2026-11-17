@@ -88,6 +88,9 @@ export default function App() {
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
+  const [serviceMaintenance, setServiceMaintenance] = useState([]);
+  const [serviceMaintenanceLoading, setServiceMaintenanceLoading] = useState(false);
+  const [serviceMaintenanceSaving, setServiceMaintenanceSaving] = useState("");
   const [previewRole, setPreviewRole] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [subAccounts, setSubAccounts] = useState([]);
@@ -613,6 +616,32 @@ export default function App() {
     return () => { cancelled = true; };
   }, [activeSection, token, user?.role]);
 
+  useEffect(() => {
+    if (activeSection !== "maintenance" || !token || user?.role !== "owner") return;
+    let cancelled = false;
+    setServiceMaintenanceLoading(true);
+    api("/api/admin/service-maintenance", token).then(result => {
+      if (!cancelled) setServiceMaintenance(result.services || []);
+    }).catch(e => {
+      if (!cancelled) setError(e.message || "Could not load individual service maintenance.");
+    }).finally(() => { if (!cancelled) setServiceMaintenanceLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeSection, token, user?.role]);
+
+  async function toggleServiceMaintenance(service) {
+    if (user?.role !== "owner" || serviceMaintenanceSaving) return;
+    const next = Number(service.maintenance) === 1 ? 0 : 1;
+    setServiceMaintenanceSaving(service.service_id);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/admin/service-maintenance", token, { method: "POST", body: JSON.stringify({ service_id: service.service_id, maintenance: next }) });
+      setServiceMaintenance(result.services || []);
+      setNotice((next ? "Maintenance enabled for " : "Maintenance disabled for ") + service.name + ".");
+    } catch (e) {
+      setError(e.message || "Could not update service maintenance.");
+    } finally { setServiceMaintenanceSaving(""); }
+  }
   async function toggleMaintenance() {
     if (user?.role !== "owner" || maintenanceSaving) return;
     setMaintenanceSaving(true);
@@ -669,7 +698,13 @@ export default function App() {
       <div className="tcadmin-workspace-content">
 
       {user.id === 1 && previewRole && <div className="tcadmin-notice">Acting as {ROLES.find(r => r.value === previewRole)?.label || previewRole}. This is a UI preview only; server permissions remain Owner.</div>}
-      {activeSection === "maintenance" && user?.role === "owner" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Power size={19} /><div><h2>Server-wide maintenance</h2><p>Control the shared maintenance flag used by TC services.</p></div></div><button className="tcadmin-refresh" onClick={() => setActiveSection("home")}>Back to overview</button></div><div style={{ padding: 20 }}><div style={{ border: "1px solid #303035", borderRadius: 10, padding: 18, background: "#141416", marginBottom: 16 }}><div style={{ color: "#85858d", fontSize: 10, letterSpacing: 1, textTransform: "uppercase" }}>Current status</div><strong style={{ display: "block", marginTop: 8, fontSize: 20 }}>{maintenanceLoading ? "Checking…" : maintenanceEnabled ? "Maintenance enabled" : "Services operational"}</strong><p className="tcadmin-muted" style={{ marginBottom: 0 }}>{maintenanceEnabled ? "Public sites using the shared setting should display their maintenance page." : "The shared maintenance flag is disabled."}</p></div><button className={maintenanceEnabled ? "tcadmin-danger" : "tcadmin-save"} onClick={toggleMaintenance} disabled={maintenanceLoading || maintenanceSaving}>{maintenanceSaving ? "Saving…" : maintenanceEnabled ? "Disable server maintenance" : "Enable server maintenance"}</button><p className="tcadmin-muted">Only accounts whose assigned role is Owner can view or change this setting. The value is stored in the shared TC D1 database (0 = off, 1 = on).</p></div></section>}
+      {activeSection === "maintenance" && user?.role === "owner" && <section className="tcadmin-panel">
+<div className="tcadmin-panel-title"><div><Power size={19} /><div><h2>Maintenance</h2><p>Manage server-wide and individual service maintenance.</p></div></div><button className="tcadmin-refresh" onClick={() => setActiveSection("home")}>Back to overview</button></div>
+<div style={{ padding: 20 }}>
+<div className="tcadmin-maintenance-block"><div><h3>Server-wide maintenance</h3><p>Overrides individual settings and marks every service as under maintenance.</p></div><strong>{maintenanceLoading ? "Checking…" : maintenanceEnabled ? "Enabled" : "Disabled"}</strong><button className={maintenanceEnabled ? "tcadmin-danger" : "tcadmin-save"} onClick={toggleMaintenance} disabled={maintenanceLoading || maintenanceSaving}>{maintenanceSaving ? "Saving…" : maintenanceEnabled ? "Disable server maintenance" : "Enable server maintenance"}</button></div>
+<div className="tcadmin-maintenance-services"><div><h3>Individual services</h3><p>These settings only affect the selected service unless server-wide maintenance is enabled.</p></div>
+{serviceMaintenanceLoading ? <p className="tcadmin-muted">Loading services…</p> : serviceMaintenance.map(service => <div className="tcadmin-maintenance-service" key={service.service_id}><div><strong>{service.name}</strong><span>{service.host}</span></div><span className={Number(service.maintenance) === 1 ? "tcadmin-maintenance-on" : "tcadmin-maintenance-off"}>{Number(service.maintenance) === 1 ? "Maintenance" : "Operational checks"}</span><button className={Number(service.maintenance) === 1 ? "tcadmin-danger" : "tcadmin-save"} disabled={Boolean(serviceMaintenanceSaving)} onClick={() => toggleServiceMaintenance(service)}>{serviceMaintenanceSaving === service.service_id ? "Saving…" : Number(service.maintenance) === 1 ? "Disable" : "Enable maintenance"}</button></div>)}
+</div><p className="tcadmin-muted">Only the Owner can change these settings. Values are stored in the shared TC D1 database (0 = off, 1 = on).</p></div></section>}
 
       {activeSection === "settings" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Settings size={19} /><div><h2>Settings</h2><p>Manage your TCAdmin workspace preferences.</p></div></div></div><p className="tcadmin-muted">TC Admin display preferences are managed in TC Accounts.</p></section>}
 
