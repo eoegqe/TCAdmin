@@ -24,10 +24,15 @@ async function authorizeOwner(request, env) {
   } catch {
     return { response: Response.json({ error: "tc_accounts_unavailable" }, { status: 503 }) };
   }
-  if (Number(identity.sub) !== 1) return { response: Response.json({ error: "owner_only" }, { status: 403 }) };
+  const userId = Number(identity?.sub);
+  if (!Number.isSafeInteger(userId) || userId < 1) {
+    return { response: Response.json({ error: "not_authenticated" }, { status: 401 }) };
+  }
   try {
-    const owner = await env.TC.prepare("SELECT id, role, status FROM users WHERE id = 1").first();
-    if (!owner || owner.status !== "active" || Number(owner.role) !== 5) return { response: Response.json({ error: "owner_only" }, { status: 403 }) };
+    const user = await env.TC.prepare("SELECT id, role, status FROM users WHERE id = ?").bind(userId).first();
+    if (!user || user.status !== "active" || Number(user.role) !== 5) {
+      return { response: Response.json({ error: "owner_only" }, { status: 403 }) };
+    }
   } catch {
     return { response: Response.json({ error: "database_unavailable" }, { status: 503 }) };
   }
