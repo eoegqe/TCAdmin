@@ -130,3 +130,14 @@
 .tcadmin-workspace-content{min-width:0}
 .tcadmin-workspace-content>.tcadmin-panel,.tcadmin-workspace-content>.tcadmin-section-grid{margin-bottom:20px}
 @media(max-width:760px){.tcadmin-workspace{grid-template-columns:1fr;gap:14px}.tcadmin-sidebar{position:static;padding:10px}.tcadmin-sidebar .tcadmin-navigation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.tcadmin-sidebar .tcadmin-nav-button{justify-content:flex-start;padding:10px 9px;font-size:11px}.tcadmin-sidebar-label{padding:5px 8px 9px}}
+
+.tcadmin-maintenance-block,.tcadmin-maintenance-services{border:1px solid #303035;border-radius:10px;padding:18px;background:#141416;margin-bottom:16px}
+.tcadmin-maintenance-block h3,.tcadmin-maintenance-services h3{font-size:15px;margin:0 0 5px}
+.tcadmin-maintenance-block p,.tcadmin-maintenance-services>div:first-child p{font-size:12px;color:#85858d;margin:0 0 14px}
+.tcadmin-maintenance-block>strong{display:block;font-size:13px;margin-bottom:14px}
+.tcadmin-maintenance-service{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:13px 0;border-top:1px solid #303035}
+.tcadmin-maintenance-service>div strong,.tcadmin-maintenance-service>div span{display:block}
+.tcadmin-maintenance-service>div span{font-size:11px;color:#85858d;margin-top:4px}
+.tcadmin-maintenance-on{font-size:11px;color:#c7a8ff}
+.tcadmin-maintenance-off{font-size:11px;color:#6ee7a0}
+@media(max-width:620px){.tcadmin-maintenance-service{grid-template-columns:1fr auto}.tcadmin-maintenance-service button{grid-column:1/-1;justify-self:start}}
