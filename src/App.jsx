@@ -694,6 +694,11 @@ export default function App() {
     setUser(null);
     setAccounts([]);
     setClients([]);
+    setSupportTickets([]);
+    setSelectedSupportTicket(null);
+    setSupportTicketMessages([]);
+    setSupportTicketReply("");
+    setActiveSection("home");
     signOutSupportMailbox();
     try {
       await fetch(`${ACCOUNTS}/oauth/revoke`, {
@@ -793,7 +798,7 @@ export default function App() {
         {[
           { id: "home", label: "Overview", icon: <ShieldCheck size={16} /> },
           { id: "users", label: "Users", icon: <Users size={16} /> },
-          { id: "support", label: "Support", icon: <Mail size={16} /> },
+          ...(CAN_MANAGE_SUBACCOUNTS(displayRole) ? [{ id: "support", label: "Support", icon: <Mail size={16} /> }] : []),
           ...(CAN_MANAGE_SUBACCOUNTS(displayRole) ? [{ id: "verification", label: "Verification", icon: <BadgeCheck size={16} /> }] : []),
           ...(CAN_MANAGE_CLIENTS(displayRole) ? [{ id: "apps", label: "Apps", icon: <KeyRound size={16} /> }] : []),
           ...(user?.role === "owner" ? [{ id: "maintenance", label: "Maintenance", icon: <Power size={16} /> }] : []),
@@ -847,7 +852,7 @@ export default function App() {
                 <span className="tcadmin-support-message-subject">{ticket.subject}</span>
                 <span className="tcadmin-support-message-date">{ticket.sender_email} · {ticket.assigned_username ? "Assigned to " + ticket.assigned_username : "Unassigned"}</span>
               </button>)}
-              {!supportTicketBusy && !supportTickets.length && <div className="tcadmin-support-empty"><Mail size={22} /><strong>No support tickets</strong><span>New emails to support@theegget.com will appear here after mailbox sync.</span></div>}
+              {!supportTicketBusy && !supportTickets.length && <div className="tcadmin-support-empty"><Mail size={22} /><strong>No support tickets</strong><span>New emails to support@theegget.com appear automatically, usually within five minutes.</span></div>}
               {!supportTicketBusy && supportTickets.length > 0 && !supportTickets.some(ticket => (ticket.ticket_number + " " + ticket.sender_email + " " + ticket.subject + " " + ticket.status).toLowerCase().includes(supportSearch.toLowerCase())) && <div className="tcadmin-support-empty"><strong>No matching tickets</strong></div>}
             </div>
           </div>
