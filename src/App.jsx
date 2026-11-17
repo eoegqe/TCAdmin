@@ -651,7 +651,10 @@ export default function App() {
       {error && <div className="tcadmin-error"><AlertCircle size={17} />{error}</div>}
       {notice && <div className="tcadmin-notice">{notice}</div>}
 
-      <nav className="tcadmin-navigation" aria-label="Administration sections">
+      <div className="tcadmin-workspace">
+      <aside className="tcadmin-sidebar">
+        <div className="tcadmin-sidebar-label">WORKSPACE</div>
+        <nav className="tcadmin-navigation" aria-label="Administration sections">
         {[
           { id: "home", label: "Overview", icon: <ShieldCheck size={16} /> },
           { id: "users", label: "Users", icon: <Users size={16} /> },
@@ -662,6 +665,8 @@ export default function App() {
           { id: "settings", label: "Settings", icon: <Settings size={16} /> }
         ].map(item => <button key={item.id} className={activeSection === item.id ? "tcadmin-nav-button active" : "tcadmin-nav-button"} onClick={() => setActiveSection(item.id)}>{item.icon}{item.label}</button>)}
       </nav>
+      </aside>
+      <div className="tcadmin-workspace-content">
 
       {user.id === 1 && previewRole && <div className="tcadmin-notice">Acting as {ROLES.find(r => r.value === previewRole)?.label || previewRole}. This is a UI preview only; server permissions remain Owner.</div>}
       {activeSection === "maintenance" && user?.role === "owner" && <section className="tcadmin-panel"><div className="tcadmin-panel-title"><div><Power size={19} /><div><h2>Server-wide maintenance</h2><p>Control the shared maintenance flag used by TC services.</p></div></div><button className="tcadmin-refresh" onClick={() => setActiveSection("home")}>Back to overview</button></div><div style={{ padding: 20 }}><div style={{ border: "1px solid #303035", borderRadius: 10, padding: 18, background: "#141416", marginBottom: 16 }}><div style={{ color: "#85858d", fontSize: 10, letterSpacing: 1, textTransform: "uppercase" }}>Current status</div><strong style={{ display: "block", marginTop: 8, fontSize: 20 }}>{maintenanceLoading ? "Checking…" : maintenanceEnabled ? "Maintenance enabled" : "Services operational"}</strong><p className="tcadmin-muted" style={{ marginBottom: 0 }}>{maintenanceEnabled ? "Public sites using the shared setting should display their maintenance page." : "The shared maintenance flag is disabled."}</p></div><button className={maintenanceEnabled ? "tcadmin-danger" : "tcadmin-save"} onClick={toggleMaintenance} disabled={maintenanceLoading || maintenanceSaving}>{maintenanceSaving ? "Saving…" : maintenanceEnabled ? "Disable server maintenance" : "Enable server maintenance"}</button><p className="tcadmin-muted">Only accounts whose assigned role is Owner can view or change this setting. The value is stored in the shared TC D1 database (0 = off, 1 = on).</p></div></section>}
@@ -873,6 +878,8 @@ export default function App() {
         </section>
       </div>}
       {activeSection === "apps" && <p className="tcadmin-security-note"><ShieldCheck size={15} /> OAuth client changes are checked against your TC role on the server.</p>}
+      </div>
+      </div>
     </main>}
   </div>;
 }
