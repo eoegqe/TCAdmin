@@ -4,6 +4,7 @@ import { ShieldCheck, Users, LogOut, RefreshCw, LockKeyhole, AlertCircle, UserCo
 const ACCOUNTS = "https://accounts.theegget.com";
 const CLIENT_ID = import.meta.env.VITE_TC_OAUTH_CLIENT_ID || "tc_B5LqoZygi4pJcaM_y7YF_roDmGtjYUax";
 const REDIRECT_URI = "https://admin.theegget.com/oauth/callback";
+const SUPPORT_MAILBOX = "support@theegget.com";
 const ROLES = [
   { value: "user", label: "1 · User" },
   { value: "support", label: "2 · Support" },
@@ -97,7 +98,7 @@ export default function App() {
   const [subAccountId, setSubAccountId] = useState("");
   const [subAccountVerified, setSubAccountVerified] = useState(false);
   const [subAccountBusy, setSubAccountBusy] = useState(false);
-  const [supportEmail, setSupportEmail] = useState("");
+  const [supportEmail, setSupportEmail] = useState(SUPPORT_MAILBOX);
   const [supportPassword, setSupportPassword] = useState("");
   const [supportMailboxUser, setSupportMailboxUser] = useState("");
   const [supportLoginOpen, setSupportLoginOpen] = useState(false);
@@ -547,13 +548,9 @@ export default function App() {
 
   async function loginSupportMailbox(event) {
     event.preventDefault();
-    const email = supportEmail.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !email.endsWith("@theegget.com")) {
-      setError("Use a valid @theegget.com email address. No mailbox login attempt was made.");
-      return;
-    }
+    const email = SUPPORT_MAILBOX;
     if (!supportPassword) {
-      setError("Enter your mailbox password.");
+      setError("Enter the support mailbox password.");
       return;
     }
     setSupportLoginBusy(true);
@@ -727,11 +724,11 @@ export default function App() {
       </section>}
 
       {activeSection === "support" && <section className="tcadmin-panel tcadmin-support-workspace">
-        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Read customer conversations and reply from your employee mailbox.</p></div></div>{supportMailboxUser ? <div className="tcadmin-mailbox-session"><span className="tcadmin-role-chip">{supportMailboxUser}</span><button className="tcadmin-refresh" onClick={() => loadSupportInbox()} disabled={supportInboxBusy}><RefreshCw size={14} /> Refresh</button><button className="tcadmin-refresh" onClick={signOutSupportMailbox}>Sign out</button></div> : <button className="tcadmin-save" onClick={() => setSupportLoginOpen(value => !value)}><LockKeyhole size={14} style={{ verticalAlign: "middle", marginRight: 5 }} />Log in</button>}</div>
+        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Read customer conversations and reply from the shared support mailbox.</p></div></div>{supportMailboxUser ? <div className="tcadmin-mailbox-session"><span className="tcadmin-role-chip">{supportMailboxUser}</span><button className="tcadmin-refresh" onClick={() => loadSupportInbox()} disabled={supportInboxBusy}><RefreshCw size={14} /> Refresh</button><button className="tcadmin-refresh" onClick={signOutSupportMailbox}>Sign out</button></div> : <button className="tcadmin-save" onClick={() => setSupportLoginOpen(value => !value)}><LockKeyhole size={14} style={{ verticalAlign: "middle", marginRight: 5 }} />Log in</button>}</div>
         {supportLoginOpen && !supportMailboxUser && <form className="tcadmin-mailbox-login" onSubmit={loginSupportMailbox}>
-          <div><strong>Log in to your TC mailbox</strong><p>Use your employee mailbox credentials. Only @theegget.com addresses are accepted.</p></div>
-          <label>Email address<input type="email" required maxLength={254} autoComplete="username" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} placeholder="employee@theegget.com" /></label>
-          <label>Password<input type="password" required maxLength={1024} autoComplete="current-password" value={supportPassword} onChange={e => setSupportPassword(e.target.value)} placeholder="Mailbox password" /></label>
+          <div><strong>Connect the Support Team mailbox</strong><p>TCAdmin always connects to the shared support mailbox.</p></div>
+          <label>Email address<input type="email" value={SUPPORT_MAILBOX} readOnly disabled /></label>
+          <label>Password<input type="password" required maxLength={1024} autoComplete="current-password" value={supportPassword} onChange={e => setSupportPassword(e.target.value)} placeholder="Support mailbox password" /></label>
           <div className="tcadmin-mailbox-login-actions"><button className="tcadmin-save" type="submit" disabled={supportLoginBusy}>{supportLoginBusy ? "Connecting…" : "Connect mailbox"}</button><button className="tcadmin-refresh" type="button" onClick={() => setSupportLoginOpen(false)}>Cancel</button></div>
         </form>}
         {supportMailboxUser ? <div className="tcadmin-support-split tcadmin-support-connected">
@@ -753,7 +750,7 @@ export default function App() {
               <form className="tcadmin-support-reply" onSubmit={sendSupportReply}><label htmlFor="tcadmin-support-reply">Reply to original sender</label><textarea id="tcadmin-support-reply" rows={5} maxLength={20000} value={supportReply} onChange={e => setSupportReply(e.target.value)} placeholder="Write your reply…" required /><div><span>Replies can only go to the sender of this message.</span><button className="tcadmin-save" type="submit" disabled={supportReplyBusy || !supportReply.trim()}><Send size={14} />{supportReplyBusy ? "Sending…" : "Send reply"}</button></div></form>
             </div> : <div className="tcadmin-support-empty"><Mail size={26} /><strong>Select a conversation</strong><span>Choose a message to read its full contents, view attachments, and reply.</span></div>}
           </div>
-        </div> : <div className="tcadmin-support-split"><div className="tcadmin-support-list"><div className="tcadmin-support-search">Sign in to load the support inbox</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>No mailbox connected</strong><span>Log in with your employee @theegget.com mailbox to view customer messages.</span></div></div><div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Support workspace</strong><span>Your messages and replies will appear here after mailbox sign-in.</span></div></div></div>}
+        </div> : <div className="tcadmin-support-split"><div className="tcadmin-support-list"><div className="tcadmin-support-search">Sign in to load the support inbox</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>No mailbox connected</strong><span>Connect the shared support@theegget.com mailbox to view customer messages.</span></div></div><div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Support workspace</strong><span>Your messages and replies will appear here after mailbox sign-in.</span></div></div></div>}
         <div className="tcadmin-support-note"><ShieldCheck size={15} /> Replies are sent only to the sender of the selected incoming message. Arbitrary direct emails and announcements remain unavailable to Support staff. Mailbox credentials remain in this browser session's memory and are not saved to browser storage.</div>
       </section>}
 
