@@ -8,6 +8,7 @@ import { onRequestGet as listRoles, onRequestPost as updateRole } from "../funct
 import { onRequestGet as listOAuthClients, onRequestPost as updateOAuthClient, onRequestDelete as deleteOAuthClient } from "../functions/api/admin/oauth-clients.js";
 import { onRequestPost as sendAdminMail } from "../functions/api/admin/send-mail.js";
 import { onRequestGet as listVerificationRequests, onRequestPatch as reviewVerificationRequest } from "../functions/api/admin/verification-requests.js";
+import { onRequestGet as listServiceMaintenance, onRequestPost as updateServiceMaintenance } from "../functions/api/admin/service-maintenance.js";
 
 const routes = new Map([
   ["GET /api/health", health],
@@ -25,7 +26,9 @@ const routes = new Map([
   ["DELETE /api/admin/oauth-clients", deleteOAuthClient],
   ["POST /api/admin/send-mail", sendAdminMail],
   ["GET /api/admin/verification-requests", listVerificationRequests],
-  ["PATCH /api/admin/verification-requests", reviewVerificationRequest]
+  ["PATCH /api/admin/verification-requests", reviewVerificationRequest],
+  ["GET /api/admin/service-maintenance", listServiceMaintenance],
+  ["POST /api/admin/service-maintenance", updateServiceMaintenance]
 ]);
 
 export default {
