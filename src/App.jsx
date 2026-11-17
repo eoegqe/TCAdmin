@@ -109,6 +109,13 @@ export default function App() {
   const [supportInboxBusy, setSupportInboxBusy] = useState(false);
   const [supportReplyBusy, setSupportReplyBusy] = useState(false);
   const [supportSearch, setSupportSearch] = useState("");
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [selectedSupportTicket, setSelectedSupportTicket] = useState(null);
+  const [supportTicketMessages, setSupportTicketMessages] = useState([]);
+  const [supportTicketReply, setSupportTicketReply] = useState("");
+  const [supportTicketStatus, setSupportTicketStatus] = useState("Open");
+  const [supportTicketBusy, setSupportTicketBusy] = useState(false);
+  const [supportTicketReplyBusy, setSupportTicketReplyBusy] = useState(false);
   const [verificationRequests, setVerificationRequests] = useState([]);
   const [verificationBusy, setVerificationBusy] = useState(false);
 
@@ -580,6 +587,104 @@ export default function App() {
     setSupportSearch("");
   }
 
+
+  async function supportTicketRequest(path, payload = {}) {
+    const response = await fetch(ACCOUNTS + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || "Ticket request failed.");
+    return result;
+  }
+
+  async function loadSupportTickets() {
+    if (!token) return;
+    setSupportTicketBusy(true);
+    try {
+      const result = await supportTicketRequest("/api/support/tickets/list");
+      setSupportTickets(result.tickets || []);
+      if (selectedSupportTicket) {
+        const refreshed = (result.tickets || []).find(ticket => ticket.id === selectedSupportTicket.id);
+        if (refreshed) setSelectedSupportTicket(refreshed);
+      }
+      setError("");
+    } catch (e) {
+      setError(e.message || "Could not load support tickets.");
+    } finally {
+      setSupportTicketBusy(false);
+    }
+  }
+
+  async function openSupportTicket(ticket) {
+    setSupportTicketBusy(true);
+    setSupportTicketReply("");
+    try {
+      const result = await supportTicketRequest("/api/support/tickets/messages", { ticket_id: ticket.id });
+      setSelectedSupportTicket(result.ticket);
+      setSupportTicketStatus(result.ticket.status);
+      setSupportTicketMessages(result.messages || []);
+      setError("");
+    } catch (e) {
+      setError(e.message || "Could not open this ticket.");
+    } finally {
+      setSupportTicketBusy(false);
+    }
+  }
+
+  async function claimSupportTicket(ticket) {
+    setSupportTicketBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await supportTicketRequest("/api/support/tickets/claim", { ticket_id: ticket.id });
+      setNotice("Ticket " + ticket.ticket_number + " is now assigned to you. It cannot be reassigned.");
+      await loadSupportTickets();
+      await openSupportTicket({ ...ticket, assigned_admin_id: user?.id, assigned_admin_username: user?.username });
+    } catch (e) {
+      setError(e.message || "Could not claim this ticket.");
+    } finally {
+      setSupportTicketBusy(false);
+    }
+  }
+
+  async function saveSupportTicketStatus(nextStatus) {
+    if (!selectedSupportTicket) return;
+    setSupportTicketStatus(nextStatus);
+    setSupportTicketBusy(true);
+    try {
+      await supportTicketRequest("/api/support/tickets/status", { ticket_id: selectedSupportTicket.id, status: nextStatus });
+      await loadSupportTickets();
+      setSelectedSupportTicket(current => current ? { ...current, status: nextStatus } : current);
+      setNotice("Ticket status updated.");
+    } catch (e) {
+      setError(e.message || "Could not update ticket status.");
+      setSupportTicketStatus(selectedSupportTicket.status);
+    } finally {
+      setSupportTicketBusy(false);
+    }
+  }
+
+  async function sendSupportTicketReply(event) {
+    event.preventDefault();
+    if (!selectedSupportTicket || !supportTicketReply.trim()) return;
+    setSupportTicketReplyBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await supportTicketRequest("/api/support/tickets/reply", { ticket_id: selectedSupportTicket.id, message: supportTicketReply.trim() });
+      setNotice(result.message || "Reply sent.");
+      setSupportTicketReply("");
+      await openSupportTicket(selectedSupportTicket);
+      await loadSupportTickets();
+    } catch (e) {
+      setError(e.message || "Could not send the ticket reply.");
+    } finally {
+      setSupportTicketReplyBusy(false);
+    }
+  }
+
   async function signOut() {
     const current = token;
     sessionStorage.removeItem("tcadmin_access_token");
@@ -600,6 +705,10 @@ export default function App() {
   }
 
   const displayRole = user?.id === 1 && previewRole ? previewRole : user?.role;
+
+  useEffect(() => {
+    if (activeSection === "support" && token && user) loadSupportTickets();
+  }, [activeSection, token, user?.id]);
 
   useEffect(() => {
     if (activeSection !== "maintenance" || !token || user?.role !== "owner") return;
@@ -723,37 +832,48 @@ export default function App() {
         {["support"].includes(displayRole) && <div className="tcadmin-support-note"><LockKeyhole size={15} /> Support can inspect submitted proof. Admin, co-owner, and owner roles can approve or reject requests.</div>}
       </section>}
 
+
       {activeSection === "support" && <section className="tcadmin-panel tcadmin-support-workspace">
-        <div className="tcadmin-panel-title"><div><Mail size={19} /><div><h2>Support inbox</h2><p>Read customer conversations and reply from the shared support mailbox.</p></div></div>{supportMailboxUser ? <div className="tcadmin-mailbox-session"><span className="tcadmin-role-chip">{supportMailboxUser}</span><button className="tcadmin-refresh" onClick={() => loadSupportInbox()} disabled={supportInboxBusy}><RefreshCw size={14} /> Refresh</button><button className="tcadmin-refresh" onClick={signOutSupportMailbox}>Sign out</button></div> : <button className="tcadmin-save" onClick={() => setSupportLoginOpen(value => !value)}><LockKeyhole size={14} style={{ verticalAlign: "middle", marginRight: 5 }} />Log in</button>}</div>
-        {supportLoginOpen && !supportMailboxUser && <form className="tcadmin-mailbox-login" onSubmit={loginSupportMailbox}>
-          <div><strong>Connect the Support Team mailbox</strong><p>TCAdmin always connects to the shared support mailbox.</p></div>
-          <label>Email address<input type="email" value={SUPPORT_MAILBOX} readOnly disabled /></label>
-          <label>Password<input type="password" required maxLength={1024} autoComplete="current-password" value={supportPassword} onChange={e => setSupportPassword(e.target.value)} placeholder="Support mailbox password" /></label>
-          <div className="tcadmin-mailbox-login-actions"><button className="tcadmin-save" type="submit" disabled={supportLoginBusy}>{supportLoginBusy ? "Connecting…" : "Connect mailbox"}</button><button className="tcadmin-refresh" type="button" onClick={() => setSupportLoginOpen(false)}>Cancel</button></div>
-        </form>}
-        {supportMailboxUser ? <div className="tcadmin-support-split tcadmin-support-connected">
+        <div className="tcadmin-panel-title">
+          <div><Mail size={19} /><div><h2>Support tickets</h2><p>Every request has one ticket number and one permanent assigned admin.</p></div></div>
+          <button className="tcadmin-refresh" onClick={loadSupportTickets} disabled={supportTicketBusy}><RefreshCw size={14} /> Refresh</button>
+        </div>
+        <div className="tcadmin-support-split tcadmin-support-connected" style={{ minHeight: 520 }}>
           <div className="tcadmin-support-list">
-            <div className="tcadmin-support-search"><input value={supportSearch} onChange={e => setSupportSearch(e.target.value)} placeholder="Search sender or subject" aria-label="Search support messages" /></div>
+            <div className="tcadmin-support-search"><input value={supportSearch} onChange={e => setSupportSearch(e.target.value)} placeholder="Search tickets" aria-label="Search tickets" /></div>
             <div className="tcadmin-support-message-list">
-              {supportInboxBusy && !supportMessages.length ? <div className="tcadmin-support-empty"><div className="tcadmin-spinner" /><span>Loading inbox…</span></div> : supportMessages.filter(message => (message.subject + " " + message.from).toLowerCase().includes(supportSearch.toLowerCase())).map(message => <button key={message.uid} className={"tcadmin-support-message" + (selectedSupportMessage?.uid === message.uid ? " active" : "")} onClick={() => openSupportMessage(message.uid)}>
-                <span className="tcadmin-support-message-top"><strong>{message.from || "Unknown sender"}</strong>{message.unread && <i />}</span><span className="tcadmin-support-message-subject">{message.subject}</span><span className="tcadmin-support-message-date">{message.date || "Date unavailable"}</span>
+              {supportTicketBusy && !supportTickets.length ? <div className="tcadmin-support-empty"><div className="tcadmin-spinner" /><span>Loading tickets…</span></div> : supportTickets.filter(ticket => (ticket.ticket_number + " " + ticket.sender_email + " " + ticket.subject + " " + ticket.status).toLowerCase().includes(supportSearch.toLowerCase())).map(ticket => <button key={ticket.id} className={"tcadmin-support-message" + (selectedSupportTicket?.id === ticket.id ? " active" : "")} onClick={() => openSupportTicket(ticket)}>
+                <span className="tcadmin-support-message-top"><strong>{ticket.ticket_number}</strong><i style={{ fontStyle: "normal", fontSize: 10, color: "#a1a1aa" }}>{ticket.status}</i></span>
+                <span className="tcadmin-support-message-subject">{ticket.subject}</span>
+                <span className="tcadmin-support-message-date">{ticket.sender_email} · {ticket.assigned_username ? "Assigned to " + ticket.assigned_username : "Unassigned"}</span>
               </button>)}
-              {!supportInboxBusy && !supportMessages.length && <div className="tcadmin-support-empty"><Mail size={22} /><strong>Your inbox is empty</strong><span>No messages were found in this mailbox.</span></div>}
-              {!supportInboxBusy && supportMessages.length > 0 && !supportMessages.some(message => (message.subject + " " + message.from).toLowerCase().includes(supportSearch.toLowerCase())) && <div className="tcadmin-support-empty"><strong>No matching messages</strong></div>}
+              {!supportTicketBusy && !supportTickets.length && <div className="tcadmin-support-empty"><Mail size={22} /><strong>No support tickets</strong><span>New emails to support@theegget.com will appear here after mailbox sync.</span></div>}
+              {!supportTicketBusy && supportTickets.length > 0 && !supportTickets.some(ticket => (ticket.ticket_number + " " + ticket.sender_email + " " + ticket.subject + " " + ticket.status).toLowerCase().includes(supportSearch.toLowerCase())) && <div className="tcadmin-support-empty"><strong>No matching tickets</strong></div>}
             </div>
           </div>
           <div className="tcadmin-support-conversation tcadmin-support-message-view">
-            {selectedSupportMessage ? <div className="tcadmin-support-message-content">
-              <div className="tcadmin-support-message-heading"><div><h3>{selectedSupportMessage.subject}</h3><span>From {selectedSupportMessage.from} · {selectedSupportMessage.date}</span></div><span className="tcadmin-role-chip">Message #{selectedSupportMessage.uid}</span></div>
-              <pre className="tcadmin-support-message-body">{selectedSupportMessage.body || "(This message has no plain-text content.)"}</pre>
-              {selectedSupportMessage.attachments?.length > 0 && <div className="tcadmin-support-attachments"><strong><Paperclip size={14} /> Attachments</strong>{selectedSupportMessage.attachments.map((attachment,index) => <button key={index} onClick={() => downloadSupportAttachment(attachment)}><Download size={14} />{attachment.filename} <span>{Math.max(1,Math.round((attachment.size||0)/1024))} KB</span></button>)}</div>}
-              <form className="tcadmin-support-reply" onSubmit={sendSupportReply}><label htmlFor="tcadmin-support-reply">Reply to original sender</label><textarea id="tcadmin-support-reply" rows={5} maxLength={20000} value={supportReply} onChange={e => setSupportReply(e.target.value)} placeholder="Write your reply…" required /><div><span>Replies can only go to the sender of this message.</span><button className="tcadmin-save" type="submit" disabled={supportReplyBusy || !supportReply.trim()}><Send size={14} />{supportReplyBusy ? "Sending…" : "Send reply"}</button></div></form>
-            </div> : <div className="tcadmin-support-empty"><Mail size={26} /><strong>Select a conversation</strong><span>Choose a message to read its full contents, view attachments, and reply.</span></div>}
+            {selectedSupportTicket ? <div className="tcadmin-support-message-content">
+              <div className="tcadmin-support-message-heading">
+                <div><h3>{selectedSupportTicket.ticket_number}</h3><span>{selectedSupportTicket.subject}</span><span style={{ display: "block", marginTop: 5 }}>{selectedSupportTicket.sender_email}</span></div>
+                <span className="tcadmin-role-chip">{selectedSupportTicket.status}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "12px 0", borderBottom: "1px solid #29292d" }}>
+                <span style={{ color: "#a1a1aa", fontSize: 12 }}>{selectedSupportTicket.assigned_username ? "Assigned to " + selectedSupportTicket.assigned_username : "This ticket has not been claimed."}</span>
+                {!selectedSupportTicket.assigned_admin_id ? <button className="tcadmin-save" disabled={supportTicketBusy} onClick={() => claimSupportTicket(selectedSupportTicket)}>Claim ticket</button> : String(selectedSupportTicket.assigned_admin_id) === String(user?.id) ? <select value={supportTicketStatus} disabled={supportTicketBusy} onChange={e => saveSupportTicketStatus(e.target.value)} style={{ background: "#19191c", color: "#f0f0f2", border: "1px solid #3a3a40", borderRadius: 7, padding: "9px 11px" }}><option>Open</option><option>In Progress</option><option>Waiting for User</option><option>Resolved</option><option>Closed</option></select> : <span className="tcadmin-role-chip">Assigned · Locked</span>}
+              </div>
+              <div style={{ display: "grid", gap: 12, padding: "16px 0" }}>
+                {supportTicketMessages.map(message => <article key={message.id} style={{ border: "1px solid #303035", borderRadius: 9, padding: 13, background: message.direction === "outbound" ? "#17171a" : "#101012" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}><strong style={{ fontSize: 12 }}>{message.direction === "outbound" ? "TC Support" : message.sender_email || "Customer"}</strong><span style={{ color: "#777780", fontSize: 10 }}>{message.created_at ? new Date(message.created_at).toLocaleString() : ""}</span></div>
+                  <pre className="tcadmin-support-message-body" style={{ margin: 0 }}>{message.body}</pre>
+                </article>)}
+                {!supportTicketMessages.length && <p className="tcadmin-muted">No messages are attached to this ticket.</p>}
+              </div>
+              {String(selectedSupportTicket.assigned_admin_id || "") === String(user?.id) ? <form className="tcadmin-support-reply" onSubmit={sendSupportTicketReply}><label htmlFor="tcadmin-ticket-reply">Reply to customer</label><textarea id="tcadmin-ticket-reply" rows={5} maxLength={20000} value={supportTicketReply} onChange={e => setSupportTicketReply(e.target.value)} placeholder="Write your reply…" required /><div><span>Replies include the ticket number and end with “Best, TC”.</span><button className="tcadmin-save" type="submit" disabled={supportTicketReplyBusy || !supportTicketReply.trim()}><Send size={14} />{supportTicketReplyBusy ? "Sending…" : "Send reply"}</button></div></form> : <div className="tcadmin-support-note"><LockKeyhole size={15} />{selectedSupportTicket.assigned_admin_id ? "Only " + selectedSupportTicket.assigned_username + " can reply or change this ticket." : "Claim this ticket to become its permanent assigned admin."}</div>}
+            </div> : <div className="tcadmin-support-empty"><Mail size={26} /><strong>Select a ticket</strong><span>Choose a ticket to read the conversation, claim it, and respond.</span></div>}
           </div>
-        </div> : <div className="tcadmin-support-split"><div className="tcadmin-support-list"><div className="tcadmin-support-search">Sign in to load the support inbox</div><div className="tcadmin-support-empty"><Mail size={22} /><strong>No mailbox connected</strong><span>Connect the shared support@theegget.com mailbox to view customer messages.</span></div></div><div className="tcadmin-support-conversation"><div className="tcadmin-support-empty"><Mail size={26} /><strong>Support workspace</strong><span>Your messages and replies will appear here after mailbox sign-in.</span></div></div></div>}
-        <div className="tcadmin-support-note"><ShieldCheck size={15} /> Replies are sent only to the sender of the selected incoming message. Arbitrary direct emails and announcements remain unavailable to Support staff. Mailbox credentials remain in this browser session's memory and are not saved to browser storage.</div>
+        </div>
+        <div className="tcadmin-support-note"><ShieldCheck size={15} /> Tickets cannot be reassigned. Once an admin claims a ticket, only that admin can reply or change its status.</div>
       </section>}
-
 
       {activeSection === "apps" && CAN_MANAGE_CLIENTS(displayRole) && <section className="tcadmin-panel" style={{ marginBottom: 22 }}>
         <div className="tcadmin-panel-title"><div><AppWindow size={19} /><div><h2>Official apps</h2><p>Control which apps appear in the Apps section of Theegget Creations' homepage.</p></div></div><button className="tcadmin-refresh" onClick={loadOfficialApps} disabled={busy}><RefreshCw size={15} /> Refresh</button></div>
