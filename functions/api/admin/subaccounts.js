@@ -1,5 +1,5 @@
 async function getIdentity(request) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const response = await fetch("https://accounts.theegget.com/oauth/userinfo", {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
