@@ -95,8 +95,8 @@ export default function App() {
   const [previewRole, setPreviewRole] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [subAccounts, setSubAccounts] = useState([]);
-  const [subAccountId, setSubAccountId] = useState("");
-  const [subAccountVerified, setSubAccountVerified] = useState(false);
+  const [subAccountUsername, setSubAccountUsername] = useState("");
+  const [subAccountService, setSubAccountService] = useState("");
   const [subAccountBusy, setSubAccountBusy] = useState(false);
   const [supportEmail, setSupportEmail] = useState(SUPPORT_MAILBOX);
   const [supportPassword, setSupportPassword] = useState("");
@@ -459,20 +459,24 @@ export default function App() {
     }
   }
 
-  async function saveSubAccount(action, childId) {
-    const id = Number(childId || subAccountId);
-    if (!Number.isSafeInteger(id) || id < 1 || !selectedAccount) return;
+  async function saveSubAccount(action, subAccountId) {
+    if (!selectedAccount) return;
+    if (action === "create" && (!subAccountUsername.trim() || !subAccountService.trim())) return;
     setSubAccountBusy(true);
     setError("");
     setNotice("");
     try {
       await api("/api/admin/subaccounts", token, {
         method: "POST",
-        body: JSON.stringify({ action, main_user_id: selectedAccount.id, sub_user_id: id, ownership_verified: action === "link" ? subAccountVerified : undefined })
+        body: JSON.stringify(action === "create"
+          ? { action, main_user_id: selectedAccount.id, username: subAccountUsername.trim(), service: subAccountService.trim() }
+          : { action, main_user_id: selectedAccount.id, sub_account_id: subAccountId })
       });
-      setNotice(action === "link" ? "TC account #" + id + " linked as a sub-account." : "TC account #" + id + " unlinked.");
-      setSubAccountId("");
-      setSubAccountVerified(false);
+      setNotice(action === "create" ? "Sub-account created and linked to " + selectedAccount.username + "." : "Sub-account unlinked.");
+      if (action === "create") {
+        setSubAccountUsername("");
+        setSubAccountService("");
+      }
       await loadSubAccounts(selectedAccount.id);
     } catch (e) {
       setError(e.message || "Could not update sub-accounts.");
@@ -1027,11 +1031,15 @@ export default function App() {
             </div>
           </section>
           <section className="tcadmin-subaccounts-panel">
-            <div><h3>Sub-accounts</h3><p>Accounts linked to this main TC account. Link only after verifying ownership with the account holder.</p></div>
-            {subAccountBusy ? <p className="tcadmin-muted">Updating sub-accounts…</p> : subAccounts.length ? <div className="tcadmin-subaccount-list">{subAccounts.map(child => <div className="tcadmin-subaccount-row" key={child.id}><div><strong>{child.username}</strong><span>TC account #{child.id} · {child.email} · {child.status}</span></div><button className="tcadmin-refresh" disabled={subAccountBusy} onClick={() => saveSubAccount("unlink", child.id)}>Unlink</button></div>)}</div> : <p className="tcadmin-muted">No sub-accounts are linked to this profile.</p>}
-            <div className="tcadmin-subaccount-add"><label>Existing TC account ID<input type="number" min="2" step="1" value={subAccountId} onChange={e => setSubAccountId(e.target.value)} placeholder="Enter account ID" /></label><label className="tcadmin-verification"><input type="checkbox" checked={subAccountVerified} onChange={e => setSubAccountVerified(e.target.checked)} />I have verified that the account holder owns or authorizes this sub-account relationship.</label><button className="tcadmin-save" disabled={subAccountBusy || !subAccountVerified || !/^\d+$/.test(subAccountId) || Number(subAccountId) < 2} onClick={() => saveSubAccount("link")}>Link sub-account</button></div>
+            <div><h3>Sub-accounts</h3><p>Create service-specific usernames under {selectedAccount.username}. The parent account is assigned automatically.</p></div>
+            {subAccountBusy ? <p className="tcadmin-muted">Updating sub-accounts…</p> : subAccounts.length ? <div className="tcadmin-subaccount-list">{subAccounts.map(child => <div className="tcadmin-subaccount-row" key={child.id}><div><strong>{child.username}</strong><span>{child.service} · Created {child.created_at ? new Date(child.created_at).toLocaleDateString() : "date unavailable"}</span></div><button className="tcadmin-refresh" disabled={subAccountBusy} onClick={() => saveSubAccount("unlink", child.id)}>Unlink</button></div>)}</div> : <p className="tcadmin-muted">No sub-accounts have been created for this profile.</p>}
+            <div className="tcadmin-subaccount-add">
+              <label>Sub username<input type="text" value={subAccountUsername} onChange={e => setSubAccountUsername(e.target.value)} placeholder="Enter sub username" maxLength={32} autoComplete="off" /></label>
+              <label>Service<input type="text" value={subAccountService} onChange={e => setSubAccountService(e.target.value)} placeholder="Enter service name" maxLength={64} autoComplete="off" /></label>
+              <button className="tcadmin-save" disabled={subAccountBusy || !subAccountUsername.trim() || !subAccountService.trim()} onClick={() => saveSubAccount("create")}>Create sub-account</button>
+            </div>
           </section>
-          <p style={{ color: "#777780", fontSize: 11, lineHeight: 1.6, marginTop: 18 }}>Sub-account links are checked by TCAdmin on the server and recorded in TC Accounts audit logs.</p>
+          <p style={{ color: "#777780", fontSize: 11, lineHeight: 1.6, marginTop: 18 }}>Sub-account creation and removal are recorded in TC Accounts audit logs.</p>
         </section>
       </div>}
       {activeSection === "apps" && <p className="tcadmin-security-note"><ShieldCheck size={15} /> OAuth client changes are checked against your TC role on the server.</p>}
