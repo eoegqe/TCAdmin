@@ -9,6 +9,7 @@ import { onRequestGet as listOAuthClients, onRequestPost as updateOAuthClient, o
 import { onRequestPost as sendAdminMail } from "../functions/api/admin/send-mail.js";
 import { onRequestGet as listVerificationRequests, onRequestPatch as reviewVerificationRequest } from "../functions/api/admin/verification-requests.js";
 import { onRequestGet as listServiceMaintenance, onRequestPost as updateServiceMaintenance } from "../functions/api/admin/service-maintenance.js";
+import { onRequestGet as listSubAccounts, onRequestPost as updateSubAccounts } from "../functions/api/admin/subaccounts.js";
 import { onRequestGet as getMaintenance, onRequestPost as setMaintenance } from "../functions/api/admin/maintenance.js";
 
 const routes = new Map([
@@ -31,7 +32,9 @@ const routes = new Map([
   ["GET /api/admin/maintenance", getMaintenance],
   ["POST /api/admin/maintenance", setMaintenance],
   ["GET /api/admin/service-maintenance", listServiceMaintenance],
-  ["POST /api/admin/service-maintenance", updateServiceMaintenance]
+  ["POST /api/admin/service-maintenance", updateServiceMaintenance],
+  ["GET /api/admin/subaccounts", listSubAccounts],
+  ["POST /api/admin/subaccounts", updateSubAccounts]
 ]);
 
 export default {
