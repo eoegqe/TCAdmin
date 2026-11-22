@@ -30,7 +30,7 @@ export async function onRequestGet({ request, env }) {
   try {
     const parent = await env.TC.prepare("SELECT id FROM users WHERE id = ?").bind(parentId).first();
     if (!parent) return Response.json({ error: "account_not_found" }, { status: 404 });
-    const result = await env.TC.prepare("SELECT id, username, service, created_at FROM tc_sub_accounts WHERE main_user_id = ? ORDER BY created_at ASC").bind(parentId).all();
+    const result = await env.TC.prepare("SELECT id, username, service, created_at FROM tc_service_sub_accounts WHERE main_user_id = ? ORDER BY created_at ASC").bind(parentId).all();
     return Response.json({ subaccounts: result.results || [] }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "subaccounts_unavailable", message: "Apply TCAccounts migration 0008 before using sub-account management." }, { status: 503 });
@@ -63,7 +63,7 @@ export async function onRequestPost({ request, env }) {
       }
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
-      await env.TC.prepare("INSERT INTO tc_sub_accounts(id, main_user_id, username, service, created_by, created_at) VALUES(?,?,?,?,?,?)")
+      await env.TC.prepare("INSERT INTO tc_service_sub_accounts(id, main_user_id, username, service, created_by, created_at) VALUES(?,?,?,?,?,?)")
         .bind(id, parentId, username, service, auth.actor.id, now).run();
       await env.TC.prepare("INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, metadata, created_at) VALUES(?,?,?,?,?,?,?)")
         .bind(crypto.randomUUID(), auth.actor.id, "subaccount.create", "subaccount", id, JSON.stringify({ main_user_id: parentId, username, service }), now).run();
@@ -72,9 +72,9 @@ export async function onRequestPost({ request, env }) {
 
     const subAccountId = typeof body?.sub_account_id === "string" ? body.sub_account_id.trim() : "";
     if (!subAccountId || subAccountId.length > 64) return Response.json({ error: "invalid_subaccount" }, { status: 400 });
-    const existing = await env.TC.prepare("SELECT id, username, service FROM tc_sub_accounts WHERE id = ? AND main_user_id = ?").bind(subAccountId, parentId).first();
+    const existing = await env.TC.prepare("SELECT id, username, service FROM tc_service_sub_accounts WHERE id = ? AND main_user_id = ?").bind(subAccountId, parentId).first();
     if (!existing) return Response.json({ error: "subaccount_not_found" }, { status: 404 });
-    await env.TC.prepare("DELETE FROM tc_sub_accounts WHERE id = ? AND main_user_id = ?").bind(subAccountId, parentId).run();
+    await env.TC.prepare("DELETE FROM tc_service_sub_accounts WHERE id = ? AND main_user_id = ?").bind(subAccountId, parentId).run();
     const now = new Date().toISOString();
     await env.TC.prepare("INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, metadata, created_at) VALUES(?,?,?,?,?,?,?)")
       .bind(crypto.randomUUID(), auth.actor.id, "subaccount.unlink", "subaccount", subAccountId, JSON.stringify({ main_user_id: parentId, username: existing.username, service: existing.service }), now).run();
