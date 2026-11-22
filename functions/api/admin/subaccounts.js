@@ -1,5 +1,5 @@
 async function getIdentity(request) {
-  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "").trim();
   if (!token) return null;
   const response = await fetch("https://accounts.theegget.com/oauth/userinfo", {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
@@ -28,12 +28,12 @@ export async function onRequestGet({ request, env }) {
   const parentId = Number(new URL(request.url).searchParams.get("main_user_id"));
   if (!Number.isSafeInteger(parentId) || parentId < 1) return Response.json({ error: "invalid_main_account" }, { status: 400 });
   try {
-    const parent = await env.TC.prepare("SELECT id FROM users WHERE id = ? AND status = 'active'").bind(parentId).first();
+    const parent = await env.TC.prepare("SELECT id FROM users WHERE id = ?").bind(parentId).first();
     if (!parent) return Response.json({ error: "account_not_found" }, { status: 404 });
-    const result = await env.TC.prepare("SELECT u.id, u.username, u.email, u.status, s.created_at FROM tc_sub_accounts s JOIN users u ON u.id = s.sub_user_id WHERE s.main_user_id = ? ORDER BY s.created_at ASC").bind(parentId).all();
+    const result = await env.TC.prepare("SELECT id, username, service, created_at FROM tc_sub_accounts WHERE main_user_id = ? ORDER BY created_at ASC").bind(parentId).all();
     return Response.json({ subaccounts: result.results || [] }, { headers: { "Cache-Control": "no-store" } });
   } catch {
-    return Response.json({ error: "subaccounts_unavailable", message: "Apply the TC Accounts sub-account migration before using this section." }, { status: 503 });
+    return Response.json({ error: "subaccounts_unavailable", message: "Apply TCAccounts migration 0008 before using sub-account management." }, { status: 503 });
   }
 }
 
@@ -44,32 +44,43 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
   const action = body?.action;
   const parentId = Number(body?.main_user_id);
-  const childId = Number(body?.sub_user_id);
-  if (!["link", "unlink"].includes(action) || !Number.isSafeInteger(parentId) || parentId < 1 || !Number.isSafeInteger(childId) || childId < 1 || childId === 1 || parentId === childId) return Response.json({ error: "invalid_subaccount", message: "Choose a valid main account and a different existing TC account." }, { status: 400 });
-  if (action === "link" && body?.ownership_verified !== true) return Response.json({ error: "ownership_verification_required", message: "Confirm that ownership has been verified before linking this sub-account." }, { status: 400 });
+  if (!["create", "unlink"].includes(action) || !Number.isSafeInteger(parentId) || parentId < 1) {
+    return Response.json({ error: "invalid_subaccount", message: "A valid parent account is required." }, { status: 400 });
+  }
+
   try {
-    const [parent, child, parentIsChild, childIsParent] = await Promise.all([
-      env.TC.prepare("SELECT id, status FROM users WHERE id = ?").bind(parentId).first(),
-      env.TC.prepare("SELECT id, status FROM users WHERE id = ?").bind(childId).first(),
-      env.TC.prepare("SELECT sub_user_id FROM tc_sub_accounts WHERE sub_user_id = ?").bind(parentId).first(),
-      env.TC.prepare("SELECT main_user_id FROM tc_sub_accounts WHERE main_user_id = ?").bind(childId).first()
-    ]);
-    if (!parent || !child) return Response.json({ error: "account_not_found", message: "Both TC accounts must already exist." }, { status: 404 });
-    if (action === "link") {
-      if (parent.status !== "active" || child.status !== "active") return Response.json({ error: "inactive_account", message: "Only active TC accounts can be linked." }, { status: 400 });
-      if (parentIsChild || childIsParent) return Response.json({ error: "nested_subaccounts_not_allowed", message: "A sub-account cannot own or belong to another sub-account." }, { status: 409 });
+    const parent = await env.TC.prepare("SELECT id, status FROM users WHERE id = ?").bind(parentId).first();
+    if (!parent) return Response.json({ error: "account_not_found" }, { status: 404 });
+
+    if (action === "create") {
+      const username = typeof body?.username === "string" ? body.username.trim() : "";
+      const service = typeof body?.service === "string" ? body.service.trim() : "";
+      if (username.length < 3 || username.length > 32 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
+        return Response.json({ error: "invalid_username", message: "Sub username must be 3–32 letters, numbers, dots, underscores, or hyphens." }, { status: 400 });
+      }
+      if (!service || service.length > 64 || !/^[a-zA-Z0-9][a-zA-Z0-9 ._:-]*$/.test(service)) {
+        return Response.json({ error: "invalid_service", message: "Enter a service name between 1 and 64 characters." }, { status: 400 });
+      }
+      const id = crypto.randomUUID();
       const now = new Date().toISOString();
-      await env.TC.prepare("INSERT INTO tc_sub_accounts(main_user_id, sub_user_id, created_by, created_at) VALUES(?,?,?,?)").bind(parentId, childId, auth.actor.id, now).run();
-      await env.TC.prepare("INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, metadata, created_at) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(), auth.actor.id, "subaccount.link", "user", String(childId), JSON.stringify({ main_user_id: parentId, ownership_verified: true }), now).run();
-      return Response.json({ success: true, action, main_user_id: parentId, sub_user_id: childId });
+      await env.TC.prepare("INSERT INTO tc_sub_accounts(id, main_user_id, username, service, created_by, created_at) VALUES(?,?,?,?,?,?)")
+        .bind(id, parentId, username, service, auth.actor.id, now).run();
+      await env.TC.prepare("INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, metadata, created_at) VALUES(?,?,?,?,?,?,?)")
+        .bind(crypto.randomUUID(), auth.actor.id, "subaccount.create", "subaccount", id, JSON.stringify({ main_user_id: parentId, username, service }), now).run();
+      return Response.json({ success: true, action, subaccount: { id, username, service, created_at: now } });
     }
-    const result = await env.TC.prepare("DELETE FROM tc_sub_accounts WHERE main_user_id = ? AND sub_user_id = ?").bind(parentId, childId).run();
-    if (!result.meta?.changes) return Response.json({ error: "subaccount_not_found" }, { status: 404 });
+
+    const subAccountId = typeof body?.sub_account_id === "string" ? body.sub_account_id.trim() : "";
+    if (!subAccountId || subAccountId.length > 64) return Response.json({ error: "invalid_subaccount" }, { status: 400 });
+    const existing = await env.TC.prepare("SELECT id, username, service FROM tc_sub_accounts WHERE id = ? AND main_user_id = ?").bind(subAccountId, parentId).first();
+    if (!existing) return Response.json({ error: "subaccount_not_found" }, { status: 404 });
+    await env.TC.prepare("DELETE FROM tc_sub_accounts WHERE id = ? AND main_user_id = ?").bind(subAccountId, parentId).run();
     const now = new Date().toISOString();
-    await env.TC.prepare("INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, metadata, created_at) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(), auth.actor.id, "subaccount.unlink", "user", String(childId), JSON.stringify({ main_user_id: parentId }), now).run();
-    return Response.json({ success: true, action, main_user_id: parentId, sub_user_id: childId });
+    await env.TC.prepare("INSERT INTO audit_logs(id, actor_user_id, action, target_type, target_id, metadata, created_at) VALUES(?,?,?,?,?,?,?)")
+      .bind(crypto.randomUUID(), auth.actor.id, "subaccount.unlink", "subaccount", subAccountId, JSON.stringify({ main_user_id: parentId, username: existing.username, service: existing.service }), now).run();
+    return Response.json({ success: true, action, sub_account_id: subAccountId });
   } catch (e) {
-    if (String(e?.message || "").includes("UNIQUE")) return Response.json({ error: "already_linked", message: "That TC account is already linked to a main account." }, { status: 409 });
-    return Response.json({ error: "subaccounts_unavailable", message: "The sub-account relationship could not be saved. Check that the TC Accounts migration is applied." }, { status: 503 });
+    if (String(e?.message || "").includes("UNIQUE")) return Response.json({ error: "subaccount_exists", message: "That username is already registered for this service." }, { status: 409 });
+    return Response.json({ error: "subaccounts_unavailable", message: "The sub-account could not be saved. Check that TCAccounts migration 0008 is applied." }, { status: 503 });
   }
 }
